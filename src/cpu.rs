@@ -59,5 +59,21 @@ impl Chip8 {
         self.memory[0..80].copy_from_slice(&FONTSET);
         println!("Loaded font set")
     }
+
+    pub fn load_rom(&self, rp: &str) {
+        todo!("Open file");
+        todo!("Read bytes into temporary buffer");
+        // ROM size is unknown until all bytes have been read
+
+        todo!("Run size check on ROM");
+        // Games start at address 512, leaving 3584 bytes for game data (4096 - 512)
+
+        todo!("Map data to virtual memory");
+        // Copy bytes from temporary buffer into self.memory
+        // Copy must start from index 512 (0x200)
+
+        todo!("Set program counter correctly");
+        // This should already be done at cpu init
+    }
 }
 

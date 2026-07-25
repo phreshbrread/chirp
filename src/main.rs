@@ -11,14 +11,18 @@ mod cpu;
 //   - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
 
 fn main() {
-    let mut chip8: cpu::Chip8 = cpu::Chip8::new();
-    println!("Initialised CPU");
-
+    // Ensure arg is given
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("Usage: chip [ROM]");
         process::exit(1);
     }
+
+    let mut chip8: cpu::Chip8 = cpu::Chip8::new();
+    println!("Initialised CPU");
+
+    // Attempt to load ROM from first argument
+    chip8.load_rom(&args[1]);
 
     println!("Hello, world!");
 }
