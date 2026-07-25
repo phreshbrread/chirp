@@ -1,2 +1,2 @@
-# c8e
+# chip
 Chip-8 emulator written in Rust
