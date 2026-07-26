@@ -3,15 +3,16 @@
 use std::io::Read;
 use std::fs::File;
 
-const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
-const END_ADDRESS:   u16 = 0xFFF;
+const START_ADDRESS: u16   = 0x200; // First 512 bytes reserved for system
+const END_ADDRESS:   u16   = 0xFFF;
+const FONTSET_SIZE:  usize = 80;    // Fonts only take up 80 bytes
 
 #[derive(Debug)]
 pub struct Chip8 {
     pub memory:      [u8; 4096],     // 4KB of RAM (u8 is one byte)
     pub registers:   [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
     pub index_reg:   u16,            // 16-bit register to hold memory addresses
-    pub p_counter:   u16,            // Program counter
+    pub prog_ctr:    u16,            // Program counter
     pub stack:       [u16; 16],      // Call stack - list of memory addresses to keep track of subroutines
     pub stack_ptr:   u16,            // Stack pointer - tracks the top of the call stack
     pub delay_timer: u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
@@ -26,7 +27,7 @@ impl Chip8 {
             memory:      [0; 4096],     // Clear memory
             registers:   [0; 16],       // Clear registers
             index_reg:   0,             // Clear index register
-            p_counter:   START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
+            prog_ctr:    START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack:       [0; 16],
             stack_ptr:   0,
             delay_timer: 0,
@@ -42,7 +43,7 @@ impl Chip8 {
 
     fn load_font(&mut self) {
         // Each character is 5 bytes tall
-        const FONTSET: [u8; 80] = [
+        const FONTSET: [u8; FONTSET_SIZE] = [
             0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
             0x20, 0x60, 0x20, 0x20, 0x70, // 1
             0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -62,7 +63,7 @@ impl Chip8 {
         ];
 
         // Put characters into first 80 bytes of memory
-        self.memory[0..80].copy_from_slice(&FONTSET);
+        self.memory[0..FONTSET_SIZE].copy_from_slice(&FONTSET);
         println!("Loaded font set");
     }
 
@@ -93,18 +94,42 @@ impl Chip8 {
 
         // tmp_buf.iter().enumerate() returns a tuple - index and the byte being read
         for (i, &byte) in tmp_buf.iter().enumerate() {
+            // Starting from 0x200, replace each byte in Chip-8
+            // memory with the corresponding byte from the ROM
             self.memory[start_address + i] = byte;
         }
         println!("Loaded ROM into Chip-8 memory");
 
-        // Program counter is already set to beginning of ROM (0x200)
+        // Program counter is already set to the start address (0x200)
     }
 
-    // Chip-8 opcodes are 16 bits (2 bytes long).
-    // Virtual memory only stores 8 bits (1 byte) at a time.
-    // Each instruction is split between two adjacent memory slots.
-    // Each instruction must be fetched by getting the first and second byte,
-    // then combining them into a single 2 byte instruction.
+    pub fn cycle(&mut self) {
+        // --- Fetch -------------------------------------------------------
+        // Fetch the next two bytes from the program counter
+        // and combine them into a single 16-bit instruction.
+        // The "<<" operator shifts the bits left
+        let mut opcode =
+            self.memory[self.prog_ctr as usize] <<
+            self.memory[self.prog_ctr as usize + 1];
 
+        // Increment program counter
+        self.prog_ctr += 2;
+        // -----------------------------------------------------------------
+
+        // --- Decode ------------------------------------------------------
+        // TODO: Decode the instruction to determine
+        // which operation needs to occur.
+        // -----------------------------------------------------------------
+
+        // --- Execute -----------------------------------------------------
+        // TODO: Execute the instruction.
+        // -----------------------------------------------------------------
+
+        // ----------------------------------------------------------------------------
+        // Chip-8 opcodes are 16 bits (2 bytes long).
+        // Virtual memory only stores 8 bits (1 byte) at a time.
+        // Each instruction is split between two adjacent memory slots.
+        // Each instruction must be fetched by getting the first and second byte,
+        // then combining them into a single 2 byte instruction.
+    }
 }
-

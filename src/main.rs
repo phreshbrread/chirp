@@ -1,7 +1,9 @@
 #![allow(unused)]
 
 use std::{env, process};
+use raylib::prelude::*;
 
+// Include cpu.rs
 mod cpu;
 
 // Resources:
@@ -22,10 +24,20 @@ fn main() {
     // Attempt to load ROM from first argument
     chip8.load_rom(&args[1]);
 
-    println!("Hello, world!");
+    //  let window_title = format!("Chip - {}", &args[1]);
+    //  let (mut rl, thread) = raylib::init()
+    //      .size(640, 480)
+    //      .title(window_title.as_str())
+    //      .build();
+
+    //  // --- Main window loop -----------------------------------------------------
+    //  while !rl.window_should_close() {
+    //      rl.begin_drawing(&thread);
+    //  }
+    //  // --------------------------------------------------------------------------
 
     // TODO:
-    // - SDL window
+    // - Raylib window
     // - Keyboard input
     // - Audio output
     // - Master clock

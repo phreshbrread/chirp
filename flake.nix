@@ -22,11 +22,31 @@
         cmake
         rustPlatform.bindgenHook
         llvmPackages.libclang
+
+        # Raylib
+        raylib
+        cmake
+        libxi
+        libx11
+        libxinerama
+        libxrandr
+        libxcursor
+        clang
+        glfw
+        wayland
+        libGL
+        clang
+        glfw
+        wayland
       ];
 
       BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.glibc.dev}/include";
 
       RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+
+      shellHook = ''
+        export LD_LIBRARY_PATH=${pkgs.libGL}/lib:${pkgs.libx11}/lib:${pkgs.libxrandr}/lib:${pkgs.libxinerama}/lib:${pkgs.libxcursor}/lib:${pkgs.libxi}/lib:$LD_LIBRARY_PATH
+      '';
     };
   };
 }
