@@ -1,5 +1,11 @@
 // Chip-8 CPU
 
+use std::io::Read;
+use std::fs::File;
+
+const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
+const END_ADDRESS:   u16 = 0xFFF;
+
 #[derive(Debug)]
 pub struct Chip8 {
     pub memory:      [u8; 4096],     // 4KB of RAM (u8 is one byte)
@@ -17,10 +23,10 @@ pub struct Chip8 {
 impl Chip8 {
     pub fn new() -> Self {
         let mut new_cpu = Self {
-            memory:      [0; 4096],       // Clear memory
-            registers:   [0; 16],         // Clear registers
-            index_reg:   0,
-            p_counter:   0x200,           // Games start at 0x200 as the first 512 bytes are reserved for the system
+            memory:      [0; 4096],     // Clear memory
+            registers:   [0; 16],       // Clear registers
+            index_reg:   0,             // Clear index register
+            p_counter:   START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack:       [0; 16],
             stack_ptr:   0,
             delay_timer: 0,
@@ -57,23 +63,48 @@ impl Chip8 {
 
         // Put characters into first 80 bytes of memory
         self.memory[0..80].copy_from_slice(&FONTSET);
-        println!("Loaded font set")
+        println!("Loaded font set");
     }
 
-    pub fn load_rom(&self, rp: &str) {
-        todo!("Open file");
-        todo!("Read bytes into temporary buffer");
-        // ROM size is unknown until all bytes have been read
+    pub fn load_rom(&mut self, rp: &str) {
+        let max_rom_size = 4096 - 512;
 
-        todo!("Run size check on ROM");
-        // Games start at address 512, leaving 3584 bytes for game data (4096 - 512)
+        // Let open() consume "rp" since we won't need it again
+        let mut rom_file = match File::open(rp) {
+            Ok(data) => data,
+            Err(error) => {
+                println!("Failed to open ROM: {}", error);
+                std::process::exit(1);
+            },
+        };
 
-        todo!("Map data to virtual memory");
-        // Copy bytes from temporary buffer into self.memory
-        // Copy must start from index 512 (0x200)
+        // Read ROM contents into temporary buffer
+        let mut tmp_buf = Vec::new();
+        rom_file.read_to_end(&mut tmp_buf);
 
-        todo!("Set program counter correctly");
-        // This should already be done at cpu init
+        // Check ROM size
+        if tmp_buf.len() > max_rom_size {
+            println!("Invalid ROM file: ROM is too large");
+            std::process::exit(1);
+        }
+        println!("Opened ROM of size {} bytes", tmp_buf.len());
+
+        let start_address: usize = START_ADDRESS as usize;
+
+        // tmp_buf.iter().enumerate() returns a tuple - index and the byte being read
+        for (i, &byte) in tmp_buf.iter().enumerate() {
+            self.memory[start_address + i] = byte;
+        }
+        println!("Loaded ROM into Chip-8 memory");
+
+        // Program counter is already set to beginning of ROM (0x200)
     }
+
+    // Chip-8 opcodes are 16 bits (2 bytes long).
+    // Virtual memory only stores 8 bits (1 byte) at a time.
+    // Each instruction is split between two adjacent memory slots.
+    // Each instruction must be fetched by getting the first and second byte,
+    // then combining them into a single 2 byte instruction.
+
 }
 

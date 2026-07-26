@@ -1,8 +1,6 @@
 #![allow(unused)]
 
-
-use std::env;
-use std::process;
+use std::{env, process};
 
 mod cpu;
 
@@ -25,5 +23,12 @@ fn main() {
     chip8.load_rom(&args[1]);
 
     println!("Hello, world!");
-}
 
+    // TODO:
+    // - SDL window
+    // - Keyboard input
+    // - Audio output
+    // - Master clock
+    //   - Loop to call cpu.run_cycle() at 500Hz
+    //   - Calling cpu.tick_timers() at 60Hz
+}
