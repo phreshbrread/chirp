@@ -13,8 +13,7 @@ pub struct Chip8 {
     pub registers:   [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
     pub index_reg:   u16,            // 16-bit register to hold memory addresses
     pub prog_ctr:    u16,            // Program counter
-    pub stack:       [u16; 16],      // Call stack - list of memory addresses to keep track of subroutines
-    pub stack_ptr:   u16,            // Stack pointer - tracks the top of the call stack
+    pub stack:       Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
     pub delay_timer: u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
     pub sound_timer: u8,             // Same as delay_timer, but the system emits a beep if value > 0
     pub keypad:      [bool; 16],     // 16 keys, either pressed or not pressed
@@ -24,12 +23,11 @@ pub struct Chip8 {
 impl Chip8 {
     pub fn new() -> Self {
         let mut new_cpu = Self {
-            memory:      [0; 4096],     // Clear memory
-            registers:   [0; 16],       // Clear registers
-            index_reg:   0,             // Clear index register
-            prog_ctr:    START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
-            stack:       [0; 16],
-            stack_ptr:   0,
+            memory:      [0; 4096],              // Clear memory
+            registers:   [0; 16],                // Clear registers
+            index_reg:   0,                      // Clear index register
+            prog_ctr:    START_ADDRESS,          // Games start at 0x200 as the first 512 bytes are reserved for the system
+            stack:       Vec::with_capacity(16), // Call stack can hold up to 16 addresses
             delay_timer: 0,
             sound_timer: 0,
             keypad:      [false; 16],     // Set all keys to unpressed
@@ -81,7 +79,14 @@ impl Chip8 {
 
         // Read ROM contents into temporary buffer
         let mut tmp_buf = Vec::new();
-        rom_file.read_to_end(&mut tmp_buf);
+        match rom_file.read_to_end(&mut tmp_buf) {
+            // () here means we do nothing if the read is successful
+            Ok(_) => (),
+            Err(e) => {
+                println!("Error occurred: {:?}", e);
+                std::process::exit(1);
+            }
+        };
 
         // Check ROM size
         if tmp_buf.len() > max_rom_size {
@@ -100,8 +105,7 @@ impl Chip8 {
         }
         println!("Loaded ROM into Chip-8 memory");
 
-        // Program counter is already set to the start
-        // address (0x200) in cpu::Chip8::new()
+        // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
     pub fn cycle(&mut self) {
@@ -110,7 +114,7 @@ impl Chip8 {
         // and combine them into a single 16-bit instruction.
         //
         // Since an opcode is 16-bit (two bytes), it means the first 8 bits
-        // are on the right hand side of the container, so we shift them 8
+        // are on the right hand side of self.index_register += self.registersthe container, so we shift them 8
         // bits to the left using "<< 8" and then use a bitwise OR (|) to
         // essentially append the next byte to form a full 16-bit opcode
         let mut opcode: u16 =
@@ -148,42 +152,76 @@ impl Chip8 {
                         todo!("Clear screen");
                     },
                     0xEE => {
-                        // 0x00EE - Return from subroutine
-                        // CPP: chip8->pc = chip8->stack[--chip8->sp];
-                        todo!("Return from subroutine");
-                    },
+                        // Set the program counter to the last address on the stack,
+                        // then pop said address
+                        self.prog_ctr = self.stack.pop()
+                            .expect("Failed to return from subroutine");
+                        },
                     _ => panic!("Unknown 0x0 group opcode"),
                 }
             },
 
-            0x1 => todo!("0x1 group"),
+            0x1 => {
+                todo!("0x1 group");
+            },
 
-            0x2 => todo!("0x2 group"),
+            0x2 => {
+                // Save / push the current program counter to the stack so we can
+                // return later, then set the program counter to NNN
+                self.stack.push(self.prog_ctr);
+                self.prog_ctr = nnn;
+            },
 
-            0x3 => todo!("0x3 group"),
+            0x3 => {
+                todo!("0x3 group");
+            },
 
-            0x4 => todo!("0x4 group"),
+            0x4 => {
+                todo!("0x4 group");
+            },
 
-            0x5 => todo!("0x5 group"),
+            0x5 => {
+                todo!("0x5 group");
+            },
 
-            0x6 => todo!("0x6 group"),
+            0x6 => {
+                // Set register VX to value of NN
+                self.registers[x] = nn;
+            },
 
-            0x7 => todo!("0x7 group"),
+            0x7 => {
+                // Add value of NN to VX
+                // We use .wrapping_add() because this instruction on real
+                // hardware wraps around when the value overflows,
+                // otherwise we would crash here.
+                self.registers[x] += self.registers[x].wrapping_add(nn);
+            },
 
             // Maths engine
             0x8 => {
                 todo!("0x8 group");
             },
 
-            0x9 => todo!("0x9 group"),
+            0x9 => {
+                todo!("0x9 group");
+            },
 
-            0xA => todo!("0xA group"),
+            0xA => {
+                // Set value of index register to nnn
+                self.index_reg = nnn;
+            },
 
-            0xB => todo!("0xB group"),
+            0xB => {
+                todo!("0xB group");
+            },
 
-            0xC => todo!("0xC group"),
+            0xC => {
+                todo!("0xC group");
+            },
 
-            0xD => todo!("0xD group"),
+            0xD => {
+                todo!("0xD group");
+            },
 
             // Keypad checks
             0xE => {
@@ -196,7 +234,6 @@ impl Chip8 {
             },
 
             _ => {
-                println!("Debug: Opcode is {:#06X}, but nn decoded as {:#04X}", opcode, nn);
                 todo!("Implement operation {:#06x}", n1);
             },
         };
@@ -213,6 +250,9 @@ impl Chip8 {
         // --- Update state -----------------------------------------------------------
         // TODO: Update timers
         // ----------------------------------------------------------------------------
+
+
+
         // Chip-8 opcodes are 16 bits (2 bytes long).
         // Virtual memory only stores 8 bits (1 byte) at a time.
         // Each instruction is split between two adjacent memory slots.
