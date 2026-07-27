@@ -100,36 +100,123 @@ impl Chip8 {
         }
         println!("Loaded ROM into Chip-8 memory");
 
-        // Program counter is already set to the start address (0x200)
+        // Program counter is already set to the start
+        // address (0x200) in cpu::Chip8::new()
     }
 
     pub fn cycle(&mut self) {
-        // --- Fetch -------------------------------------------------------
+        // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.
-        // The "<<" operator shifts the bits left
-        let mut opcode =
-            self.memory[self.prog_ctr as usize] <<
-            self.memory[self.prog_ctr as usize + 1];
+        //
+        // Since an opcode is 16-bit (two bytes), it means the first 8 bits
+        // are on the right hand side of the container, so we shift them 8
+        // bits to the left using "<< 8" and then use a bitwise OR (|) to
+        // essentially append the next byte to form a full 16-bit opcode
+        let mut opcode: u16 =
+            ((self.memory[self.prog_ctr as usize] as u16) << 8) |
+            (self.memory[self.prog_ctr as usize + 1]) as u16;
 
         // Increment program counter
         self.prog_ctr += 2;
         // -----------------------------------------------------------------
 
         // --- Decode ------------------------------------------------------
-        // TODO: Decode the instruction to determine
-        // which operation needs to occur.
+        // When fetching an opcode like 0x6A02, it comes as a raw, packed 16-bit chunk of binary
+        // data. The CPU cannot simply execute it as-is, and instead must route different pieces
+        // of that 16-bit number to different parts of its virtual circuitry.
+        // To do that, we slice that 16-bit number into four individual 4-bit variables
+        // (called nibbles, as they are half the size of a byte), and then recombining those
+        // nibbles to form the system's core variables: X, Y, N, NN, and NNN.
+
+        let n1:  u8    = ((opcode & 0xF000) >> 12) as u8;    // Primary opcode group identifier
+        let x:   usize = ((opcode & 0x0F00) >> 8)  as usize; // Target register index
+        let y:   usize = ((opcode & 0x00F0) >> 4)  as usize; // Secondary source register index
+        let n:   u8    =  (opcode & 0x000F)        as u8;    // Immediate nibble
+        let nn:  u8    =  (opcode & 0x00FF)        as u8;    // Immediate byte
+        let nnn: u16   =   opcode & 0x0FFF;                  // Memory address
+
         // -----------------------------------------------------------------
 
         // --- Execute -----------------------------------------------------
-        // TODO: Execute the instruction.
+        // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
+        // so we can use n to identify instructions in the same group (nn in group 0x0's case)
+        match n1 {
+            0x0 => {
+                match nn {
+                    0xE0 => {
+                        todo!("Clear screen");
+                    },
+                    0xEE => {
+                        // 0x00EE - Return from subroutine
+                        // CPP: chip8->pc = chip8->stack[--chip8->sp];
+                        todo!("Return from subroutine");
+                    },
+                    _ => panic!("Unknown 0x0 group opcode"),
+                }
+            },
+
+            0x1 => todo!("0x1 group"),
+
+            0x2 => todo!("0x2 group"),
+
+            0x3 => todo!("0x3 group"),
+
+            0x4 => todo!("0x4 group"),
+
+            0x5 => todo!("0x5 group"),
+
+            0x6 => todo!("0x6 group"),
+
+            0x7 => todo!("0x7 group"),
+
+            // Maths engine
+            0x8 => {
+                todo!("0x8 group");
+            },
+
+            0x9 => todo!("0x9 group"),
+
+            0xA => todo!("0xA group"),
+
+            0xB => todo!("0xB group"),
+
+            0xC => todo!("0xC group"),
+
+            0xD => todo!("0xD group"),
+
+            // Keypad checks
+            0xE => {
+                todo!("0xE group");
+            },
+
+            // Timers, memory and fonts
+            0xF => {
+                todo!("0xF group");
+            },
+
+            _ => {
+                println!("Debug: Opcode is {:#06X}, but nn decoded as {:#04X}", opcode, nn);
+                todo!("Implement operation {:#06x}", n1);
+            },
+        };
+
+        // 00E0 (clear screen)
+        // 1NNN (jump)
+        // 6XNN (set register VX)
+        // 7XNN (add value to register VX)
+        // ANNN (set index register I)
+        // DXYN (display/draw)
+
         // -----------------------------------------------------------------
 
+        // --- Update state -----------------------------------------------------------
+        // TODO: Update timers
         // ----------------------------------------------------------------------------
         // Chip-8 opcodes are 16 bits (2 bytes long).
         // Virtual memory only stores 8 bits (1 byte) at a time.
         // Each instruction is split between two adjacent memory slots.
         // Each instruction must be fetched by getting the first and second byte,
-        // then combining them into a single 2 byte instruction.
+        // then combining them into a single two byte instruction.
     }
 }
