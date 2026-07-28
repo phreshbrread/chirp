@@ -4,34 +4,35 @@ use std::io::Read;
 use std::fs::File;
 
 const START_ADDRESS: u16   = 0x200; // First 512 bytes reserved for system
-const END_ADDRESS:   u16   = 0xFFF;
 const FONTSET_SIZE:  usize = 80;    // Fonts only take up 80 bytes
 
 #[derive(Debug)]
 pub struct Chip8 {
     pub memory:      [u8; 4096],     // 4KB of RAM (u8 is one byte)
     pub registers:   [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
-    pub index_reg:   u16,            // 16-bit register to hold memory addresses
-    pub prog_ctr:    u16,            // Program counter
-    pub stack:       Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
-    pub delay_timer: u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
-    pub sound_timer: u8,             // Same as delay_timer, but the system emits a beep if value > 0
+    pub index_reg:    u16,            // 16-bit register to hold memory addresses
+    pub prog_ctr:     u16,            // Program counter
+    pub stack:        Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
+    pub delay_timer:  u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
+    pub sound_timer:  u8,             // Same as delay_timer, but the system emits a beep if value > 0
     pub keypad:      [bool; 16],     // 16 keys, either pressed or not pressed
-    pub display:     [bool; 64 * 32] // 64 x 32 monochrome display, each pixel either on or off
+    pub display:     [bool; 64 * 32], // 64 x 32 monochrome display, each pixel either on or off
+    pub og_behaviour: bool,
 }
 
 impl Chip8 {
     pub fn new() -> Self {
         let mut new_cpu = Self {
-            memory:      [0; 4096],              // Clear memory
-            registers:   [0; 16],                // Clear registers
-            index_reg:   0,                      // Clear index register
-            prog_ctr:    START_ADDRESS,          // Games start at 0x200 as the first 512 bytes are reserved for the system
-            stack:       Vec::with_capacity(16), // Call stack can hold up to 16 addresses
-            delay_timer: 0,
-            sound_timer: 0,
-            keypad:      [false; 16],     // Set all keys to unpressed
-            display:     [false; 64 * 32] // Set all pixels to black (off)
+            memory:      [0; 4096],               // Clear memory
+            registers:   [0; 16],                 // Clear registers
+            index_reg:    0,                      // Clear index register
+            prog_ctr:     START_ADDRESS,          // Games start at 0x200 as the first 512 bytes are reserved for the system
+            stack:        Vec::with_capacity(16), // Call stack can hold up to 16 addresses
+            delay_timer:  0,
+            sound_timer:  0,
+            keypad:      [false; 16],      // Set all keys to unpressed
+            display:     [false; 64 * 32], // Set all pixels to black (off)
+            og_behaviour: false,           // Default to modern behaviour
         };
 
         new_cpu.load_font();
@@ -140,17 +141,25 @@ impl Chip8 {
         let nn:  u8    =  (opcode & 0x00FF)        as u8;    // Immediate byte
         let nnn: u16   =   opcode & 0x0FFF;                  // Memory address
 
+        // TODO: Maybe start using these instead, if it doesn't cause issues
+        let vf = self.registers[15];
+        let vx = self.registers[x];
+        let vy = self.registers[y];
+
         // -----------------------------------------------------------------
 
         // --- Execute -----------------------------------------------------
         // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
-        // so we can use n to identify instructions in the same group (nn in group 0x0's case)
+        // so we can use n or nn to identify instructions in the same group
+        // Groups using n: 0x8 and D
+        // Groups using nn: 0x0, E, and F
         match n1 {
             0x0 => {
                 match nn {
                     0xE0 => {
                         todo!("Clear screen");
                     },
+
                     0xEE => {
                         // 00EE: Set program counter to the last address on the stack,
                         // then pop said address
@@ -204,7 +213,7 @@ impl Chip8 {
                 // We use .wrapping_add() because this instruction on real
                 // hardware wraps around when the value overflows,
                 // otherwise we would crash here.
-                self.registers[x] += self.registers[x].wrapping_add(nn);
+                self.registers[x] = self.registers[x].wrapping_add(nn);
             },
 
             // Maths engine
@@ -214,11 +223,82 @@ impl Chip8 {
                         // 8XY0 - Set VX to value in VY
                         self.registers[x] = self.registers[y];
                     },
+
                     0x1 => {
                         // 8XY1: Set VX to bitwise OR of VX and VY
-                        todo!("8XY1");
+                        self.registers[x] = self.registers[x] | self.registers[y];
+
+                        // Reset VF to preserve original hardware quirk.
+                        // This also occurs in 8XY2 and 8XY3.
+                        if self.og_behaviour {
+                            self.registers[15] = 0;
+                        }
+
                     },
-                    _ => todo!("{:06X}", nn),
+
+                    0x2 => {
+                        // 8XY2: Set VX to bitwise AND of VX and VY
+                        self.registers[x] = self.registers[x] & self.registers[y];
+
+                        if self.og_behaviour {
+                            self.registers[15] = 0;
+                        }
+                    },
+
+                    0x3 => {
+                        // 8XY3: Set VX to bitwise XOR of VX and VY
+                        self.registers[x] = self.registers[x] ^ self.registers[y];
+
+                        if self.og_behaviour {
+                            self.registers[15] = 0;
+                        }
+                    },
+
+                    0x4 => {
+                        // 8XY4: Add value of VY to VX
+                        // Carry flag is affected if result is larger than 255
+
+                        // TODO
+                        todo!();
+                    },
+
+                    0x5 => {
+                        // 8XY5: Subtract value of VY from VX
+
+                        // Set VF to 1 if VX >= VY, saving into a temp variable to
+                        // avoid overwriting the register for now
+                        let borrow_flag: u8 = if self.registers[x] >= self.registers[y] {
+                            1
+                        } else {
+                            0
+                        };
+
+                        // Save value into temp variable, wrapping result in the case of an
+                        // underflow
+                        let result = self.registers[x].wrapping_sub(self.registers[y]);
+
+                        // We can now overwrite the actual registers
+                        self.registers[x]  = result;
+                        self.registers[15] = borrow_flag;
+                    },
+
+                    0x6 => {
+                        // 8XY6: TODO
+                        // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+                        todo!("0x8XY6");
+                    },
+
+                    0x7 => {
+                        // 8XY7: Set VX to result of VY - VX
+                        self.registers[x] = self.registers[y] - self.registers[x];
+                    },
+
+                    0xE => {
+                        // 8XYE: TODO
+                        // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+                        todo!();
+                    },
+                    _ => panic!("Unimplemented instruction: {:06X}", nn),
                 };
             },
 
@@ -288,11 +368,51 @@ impl Chip8 {
 
             // Timers, memory and fonts
             0xF => {
-                todo!("0xF group");
+                match nn {
+                    0x33 => {
+                        // FX33: Store binary-coded decimal representation of VX in
+                        // memory locations index_reg, index_reg + 1 and index_reg + 2.
+                        // TODO: Implement
+                    },
+
+                    0x55 => {
+                        // FX55: Store registers V0 - VX in memory, starting at index_reg
+                        let start = self.index_reg as usize;
+
+                        // Copy value from registers V0 - VX, starting at the memory
+                        // address of index_reg
+                        self.memory[start..(start + x + 1)]
+                            .copy_from_slice(&self.registers[..(x + 1)]);
+
+                        // Early hardware had a quirk where index_reg would be
+                        // incremented by (x + 1) at the end of the copy operation
+                        if self.og_behaviour {
+                            self.index_reg = self.index_reg.wrapping_add((x as u16) + 1);
+                        }
+                    },
+
+                    0x65 => {
+                        // FX65: Read registers V0 - VX from memory, starting at index_reg
+
+                        // Copy x + 1 bytes from RAM into V registers, from V0 - VX
+                        // TODO: Rewrite in a more idiomatic way
+                        let mut i = 0;
+                        while i <= x {
+                            self.registers[i] = self.memory[self.index_reg as usize + i];
+                            i += 1;
+                        }
+
+                        if self.og_behaviour {
+                            self.index_reg = self.index_reg.wrapping_add((x as u16) + 1);
+                        }
+                    },
+
+                    _ => panic!("Unimplemented: {:#06X}", opcode),
+                };
             },
 
             _ => {
-                todo!("Implement operation {:#06x}", n1);
+                todo!("Unimplemented: {:#06X}", opcode);
             },
         };
 
