@@ -114,10 +114,10 @@ impl Chip8 {
         // and combine them into a single 16-bit instruction.
         //
         // Since an opcode is 16-bit (two bytes), it means the first 8 bits
-        // are on the right hand side of self.index_register += self.registersthe container, so we shift them 8
+        // are on the right hand side of the container, so we shift them 8
         // bits to the left using "<< 8" and then use a bitwise OR (|) to
         // essentially append the next byte to form a full 16-bit opcode
-        let mut opcode: u16 =
+        let opcode: u16 =
             ((self.memory[self.prog_ctr as usize] as u16) << 8) |
             (self.memory[self.prog_ctr as usize + 1]) as u16;
 
@@ -162,7 +162,8 @@ impl Chip8 {
             },
 
             0x1 => {
-                todo!("0x1 group");
+                // Jump to nnn
+                self.prog_ctr = nnn;
             },
 
             0x2 => {
@@ -173,11 +174,17 @@ impl Chip8 {
             },
 
             0x3 => {
-                todo!("0x3 group");
+                // Skip the next instruction if Vx = nn
+                if self.registers[x] == nn {
+                    self.prog_ctr += 2;
+                }
             },
 
             0x4 => {
-                todo!("0x4 group");
+                // Skip the next instruction if Vx != nn
+                if self.registers[x] != nn {
+                    self.prog_ctr += 2;
+                }
             },
 
             0x5 => {
@@ -219,8 +226,42 @@ impl Chip8 {
                 todo!("0xC group");
             },
 
+            // Display
             0xD => {
-                todo!("0xD group");
+                // Apply modulo to wrap sprites around edges if needed
+                let start_x = self.registers[x] % 64;
+                let start_y = self.registers[y] % 32;
+                let height = n;
+                let mut collision = false;
+
+                // Vertical loop
+                for i in 0..height {
+                    let sprite_byte: u8 = self.memory[self.index_reg as usize + i as usize];
+                    let row_coord = (start_y + i) % 32;
+
+                    // Horizontal loop
+                    for j in 0..8 {
+                        let column = (start_x + j) % 64;
+
+                        let isolated_bit = sprite_byte >> (7 - j) & 1;
+                        let display_index: usize = row_coord as usize * 64 + column as usize;
+
+                        if (isolated_bit) == 1 {
+                            if self.display[display_index] == true {
+                                collision = true;
+                                self.display[display_index] = false;
+                            } else {
+                                self.display[display_index] = true;
+                            }
+                        }
+                    }
+                }
+
+                if collision {
+                    self.registers[15] = 1;
+                } else {
+                    self.registers[15] = 0;
+                }
             },
 
             // Keypad checks
