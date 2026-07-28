@@ -152,7 +152,7 @@ impl Chip8 {
                         todo!("Clear screen");
                     },
                     0xEE => {
-                        // Set the program counter to the last address on the stack,
+                        // 00EE: Set program counter to the last address on the stack,
                         // then pop said address
                         self.prog_ctr = self.stack.pop()
                             .expect("Failed to return from subroutine");
@@ -162,42 +162,45 @@ impl Chip8 {
             },
 
             0x1 => {
-                // Jump to nnn
+                // 1NNN: Jump to nnn
                 self.prog_ctr = nnn;
             },
 
             0x2 => {
-                // Save / push the current program counter to the stack so we can
+                // 2NNN: Save / push the current program counter to the stack so we can
                 // return later, then set the program counter to NNN
                 self.stack.push(self.prog_ctr);
                 self.prog_ctr = nnn;
             },
 
             0x3 => {
-                // Skip the next instruction if Vx = nn
+                // 3XNN: Skip next instruction if VX = nn
                 if self.registers[x] == nn {
                     self.prog_ctr += 2;
                 }
             },
 
             0x4 => {
-                // Skip the next instruction if Vx != nn
+                // 4XNN: Skip next instruction if VX != nn
                 if self.registers[x] != nn {
                     self.prog_ctr += 2;
                 }
             },
 
             0x5 => {
-                todo!("0x5 group");
+                // 5XY0: Skip next instruction if VX and VY are equal
+                if self.registers[x] == self.registers[y] {
+                    self.prog_ctr += 2;
+                }
             },
 
             0x6 => {
-                // Set register VX to value of NN
+                // 6XNN: Set register VX to value of NN
                 self.registers[x] = nn;
             },
 
             0x7 => {
-                // Add value of NN to VX
+                // 7XNN: Add value of NN to VX
                 // We use .wrapping_add() because this instruction on real
                 // hardware wraps around when the value overflows,
                 // otherwise we would crash here.
@@ -206,15 +209,28 @@ impl Chip8 {
 
             // Maths engine
             0x8 => {
-                todo!("0x8 group");
+                match n {
+                    0x0 => {
+                        // 8XY0 - Set VX to value in VY
+                        self.registers[x] = self.registers[y];
+                    },
+                    0x1 => {
+                        // 8XY1: Set VX to bitwise OR of VX and VY
+                        todo!("8XY1");
+                    },
+                    _ => todo!("{:06X}", nn),
+                };
             },
 
             0x9 => {
-                todo!("0x9 group");
+                // 9XY0: Skip next instruction if VX and VY are NOT equal
+                if self.registers[x] != self.registers[y] {
+                    self.prog_ctr += 2;
+                }
             },
 
             0xA => {
-                // Set value of index register to nnn
+                // ANNN: Set value of index register to nnn
                 self.index_reg = nnn;
             },
 
@@ -228,6 +244,7 @@ impl Chip8 {
 
             // Display
             0xD => {
+                // DXYN: Draw to screen and check collisions
                 // Apply modulo to wrap sprites around edges if needed
                 let start_x = self.registers[x] % 64;
                 let start_y = self.registers[y] % 32;
