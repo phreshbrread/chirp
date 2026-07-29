@@ -9,6 +9,8 @@ mod cpu;
 //   - https://austinmorlan.com/posts/chip8_emulator/
 //   - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
 //   - http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Annn
+//   - https://wiki.xxiivv.com/site/chip8.html
+//   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
 
 fn main() {
     // Ensure arg is given
@@ -48,33 +50,42 @@ fn main() {
         // We assign the variable d to represent the active drawing context
         let mut d = rl.begin_drawing(&thread);
 
+        // --- Keypad input -----------------------------------------------------
+        // Keys are in order from 1 - 9, 0, then A to F
+        chip8.keypad[1]  = d.is_key_down(KeyboardKey::KEY_ONE);
+        chip8.keypad[2]  = d.is_key_down(KeyboardKey::KEY_TWO);
+        chip8.keypad[3]  = d.is_key_down(KeyboardKey::KEY_THREE);
+        chip8.keypad[12] = d.is_key_down(KeyboardKey::KEY_FOUR);
+
+        chip8.keypad[4]  = d.is_key_down(KeyboardKey::KEY_Q);
+        chip8.keypad[5]  = d.is_key_down(KeyboardKey::KEY_W);
+        chip8.keypad[6]  = d.is_key_down(KeyboardKey::KEY_E);
+        chip8.keypad[13] = d.is_key_down(KeyboardKey::KEY_R);
+
+        chip8.keypad[7]  = d.is_key_down(KeyboardKey::KEY_A);
+        chip8.keypad[8]  = d.is_key_down(KeyboardKey::KEY_S);
+        chip8.keypad[9]  = d.is_key_down(KeyboardKey::KEY_D);
+        chip8.keypad[14] = d.is_key_down(KeyboardKey::KEY_F);
+
+        chip8.keypad[10] = d.is_key_down(KeyboardKey::KEY_Z);
+        chip8.keypad[0]  = d.is_key_down(KeyboardKey::KEY_X);
+        chip8.keypad[11] = d.is_key_down(KeyboardKey::KEY_C);
+        chip8.keypad[15] = d.is_key_down(KeyboardKey::KEY_V);
+        // ----------------------------------------------------------------------
+
         // TODO: Run chip8.cycle() and tick_timers() functions without blocking raylib
         chip8.cycle();
         chip8.tick_timers();
 
+        if chip8.should_beep {
+            // TODO: Play beep
+            println!("Beep");
+        }
+
+        // --- Draw pixels ------------------------------------------------------
         d.clear_background(Color::BLACK);
         d.draw_fps(0, 0);
 
-        // --- Keypad input -----------------------------------------------------
-        chip8.keypad[0]  = d.is_key_pressed(KeyboardKey::KEY_ONE);
-        chip8.keypad[1]  = d.is_key_pressed(KeyboardKey::KEY_TWO);
-        chip8.keypad[2]  = d.is_key_pressed(KeyboardKey::KEY_THREE);
-        chip8.keypad[3]  = d.is_key_pressed(KeyboardKey::KEY_FOUR);
-        chip8.keypad[4]  = d.is_key_pressed(KeyboardKey::KEY_Q);
-        chip8.keypad[5]  = d.is_key_pressed(KeyboardKey::KEY_W);
-        chip8.keypad[6]  = d.is_key_pressed(KeyboardKey::KEY_E);
-        chip8.keypad[7]  = d.is_key_pressed(KeyboardKey::KEY_R);
-        chip8.keypad[8]  = d.is_key_pressed(KeyboardKey::KEY_A);
-        chip8.keypad[9]  = d.is_key_pressed(KeyboardKey::KEY_S);
-        chip8.keypad[10] = d.is_key_pressed(KeyboardKey::KEY_D);
-        chip8.keypad[11] = d.is_key_pressed(KeyboardKey::KEY_F);
-        chip8.keypad[12] = d.is_key_pressed(KeyboardKey::KEY_Z);
-        chip8.keypad[13] = d.is_key_pressed(KeyboardKey::KEY_X);
-        chip8.keypad[14] = d.is_key_pressed(KeyboardKey::KEY_C);
-        chip8.keypad[15] = d.is_key_pressed(KeyboardKey::KEY_V);
-        // ----------------------------------------------------------------------
-
-        // --- Draw pixels ------------------------------------------------------
         for h in 0..32 {     // Height
             for w in 0..64 { // Width
                 let pixel: i32 = (h * 64) + w;
@@ -90,11 +101,6 @@ fn main() {
             }
         }
         // ----------------------------------------------------------------------
-
-        if chip8.should_beep {
-            // TODO: Play beep
-            println!("Beep");
-        }
     }
     // --------------------------------------------------------------------------
 }

@@ -68,6 +68,7 @@ impl Chip8 {
         println!("Loaded font set");
     }
 
+    // TODO: Check if rom size is greater than 512 bytes
     pub fn load_rom(&mut self, rp: &str) {
         let max_rom_size = 4096 - 512;
 
@@ -456,6 +457,12 @@ impl Chip8 {
             // Timers, memory and fonts
             0xF => {
                 match nn {
+                    0x0A => {
+                        // FX0A: Pause execution until key is pressed
+                        // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Fx0A
+                        todo!("FX0A");
+                    },
+
                     0x07 => {
                         // FX07: Set VX to value of delay timer
                         self.registers[x] = self.delay_timer;
@@ -464,6 +471,12 @@ impl Chip8 {
                     0x15 => {
                         // FX15: Set delay timer equal to VX
                         self.delay_timer = self.registers[x];
+                    },
+
+                    0x29 => {
+                        // FX29:
+                        // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Fx29
+                        todo!("FX29");
                     },
 
                     0x1E => {
