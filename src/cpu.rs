@@ -330,7 +330,7 @@ impl Chip8 {
 
                     0x7 => {
                         // 8XY7: Set VX to result of VY - VX
-                        self.registers[x] = self.registers[y] - self.registers[x];
+                        self.registers[x] = self.registers[y].wrapping_sub(self.registers[x]);
                     },
 
                     0xE => {
