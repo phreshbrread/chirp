@@ -109,6 +109,10 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
+    pub fn tick_timers(&mut self) {
+
+    }
+
     pub fn cycle(&mut self) {
         // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
@@ -157,7 +161,8 @@ impl Chip8 {
             0x0 => {
                 match nn {
                     0xE0 => {
-                        todo!("Clear screen");
+                        // 00E0: Clear the screen
+                        self.display.fill(false);
                     },
 
                     0xEE => {
@@ -166,7 +171,7 @@ impl Chip8 {
                         self.prog_ctr = self.stack.pop()
                             .expect("Failed to return from subroutine");
                         },
-                    _ => panic!("Unknown 0x0 group opcode"),
+                    _ => unknown_opcode(opcode),
                 }
             },
 
@@ -256,10 +261,22 @@ impl Chip8 {
 
                     0x4 => {
                         // 8XY4: Add value of VY to VX
-                        // Carry flag is affected if result is larger than 255
+                        // If the result is larger than 255, it will overflow VX, if this happens,
+                        // we set the value of register VF to 1, otherwise, set it to 0.
+                        // TODO: Improve code here
 
-                        // TODO
-                        todo!();
+                        // First check if the result will overflow
+                        let result: u16 = self.registers[x] as u16 + self.registers[y] as u16;
+
+                        // Then we can perform the actual maths on VX
+                        self.registers[x] = self.registers[x].wrapping_add(self.registers[y]);
+
+                        // Finally, set VF accordingly
+                        if result > 255 {
+                            self.registers[15] = 1;
+                        } else {
+                            self.registers[15] = 0;
+                        }
                     },
 
                     0x5 => {
@@ -294,11 +311,39 @@ impl Chip8 {
                     },
 
                     0xE => {
-                        // 8XYE: TODO
+                        // 8XYE:
                         // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-                        todo!();
+
+                        // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise
+                        // to 0. Then Vx is multiplied by 2.
+                        //
+                        // In the CHIP-8 interpreter for the original COSMAC VIP,
+                        // this instruction did the following: It put the value
+                        // of VY into VX, and then shifted the value in VX 1 bit
+                        // to the right (8XY6) or left (8XYE).
+                        // VY was not affected, but the flag register VF would
+                        // be set to the bit that was shifted out.
+                        //
+                        // Shift the value of VX one bit to the right (8XY6) or left (8XYE)
+                        // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+                        if self.og_behaviour {
+                            self.registers[x] = self.registers[y];
+                        }
+
+                        // Get significant bit of VX
+                        //
+                        // if (bit shifted was 1) {
+                        //   VF = 1;
+                        // } else {
+                        //   VF = 0;
+                        // }
+
+                        self.registers[x] = self.registers[x] << 1;
+
+
+                        todo!("Finish 8XYE");
                     },
-                    _ => panic!("Unimplemented instruction: {:06X}", nn),
+                    _ => unknown_opcode(opcode),
                 };
             },
 
@@ -319,7 +364,11 @@ impl Chip8 {
             },
 
             0xC => {
-                todo!("0xC group");
+                // CXNN: Set VX to random byte AND nn
+                // First, generate a random number between 0 - 255, then perform a bitwise
+                // AND on it with the value in nn, finally storing the result in VX
+                let random_byte: u8 = rand::random();
+                self.registers[x] = random_byte & nn;
             },
 
             // Display
@@ -363,16 +412,50 @@ impl Chip8 {
 
             // Keypad checks
             0xE => {
-                todo!("0xE group");
+                let key: usize = self.registers[x] as usize;
+
+                match nn {
+                    0x9E => {
+                        // EX9A: Skip next instruction if the key with value in VX is pressed
+                        if self.keypad[key] {
+                            self.prog_ctr += 2;
+                        }
+                    },
+
+                    0xA1 => {
+                        // EXA1: Skip the next instruction if key with value in VX is not pressed
+                        if !self.keypad[key] {
+                            self.prog_ctr += 2;
+                        }
+                    },
+
+                    _ => println!("Unknown 0xE group instruction"),
+                };
             },
 
             // Timers, memory and fonts
             0xF => {
                 match nn {
+                    0x07 => {
+                        // FX07: Set VX to value of delay timer
+                        self.registers[x] = self.delay_timer;
+                    },
+
+                    0x15 => {
+                        // FX15: Set delay timer equal to VX
+                        self.delay_timer = self.registers[x];
+                    },
+
+                    0x1E => {
+                        // FX1E: Add the value of index_reg and VX, storing the result in index_reg
+                        self.index_reg = self.index_reg + self.registers[x] as u16;
+                    },
+
                     0x33 => {
                         // FX33: Store binary-coded decimal representation of VX in
                         // memory locations index_reg, index_reg + 1 and index_reg + 2.
                         // TODO: Implement
+                        todo!();
                     },
 
                     0x55 => {
@@ -407,13 +490,11 @@ impl Chip8 {
                         }
                     },
 
-                    _ => panic!("Unimplemented: {:#06X}", opcode),
+                    _ => unknown_opcode(opcode),
                 };
             },
 
-            _ => {
-                todo!("Unimplemented: {:#06X}", opcode);
-            },
+            _ => unknown_opcode(opcode),
         };
 
         // 00E0 (clear screen)
@@ -437,4 +518,8 @@ impl Chip8 {
         // Each instruction must be fetched by getting the first and second byte,
         // then combining them into a single two byte instruction.
     }
+}
+
+fn unknown_opcode(oc: u16) -> ! {
+    panic!("Unimplemented: {:#06X}", oc);
 }

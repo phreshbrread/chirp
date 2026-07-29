@@ -39,8 +39,9 @@ fn main() {
 
     // At 500hz, CPU should cycle every 2 milliseconds.
     // 1 sec / 500 times = 0.002 secs, or 2 ms
-    let frequency_hz  = 500;
-    let tick_interval = Duration::from_secs(1) / frequency_hz;
+    let cpu_hz         = 500;
+    let cycle_interval = Duration::from_secs(1) / cpu_hz;
+    let timer_interval = Duration::from_secs(1) / 60; // Timers update at a fixed rate of 60Hz
 
     // --- Main window loop -----------------------------------------------------
     while !rl.window_should_close() {
@@ -52,9 +53,8 @@ fn main() {
         chip8.cycle();
 
         // Determine the next tick deadline, then wait until then
-        next_tick += tick_interval;
-
-        let now = Instant::now();
+        next_tick += cycle_interval;
+        let now   =  Instant::now();
         if next_tick > now {
             // Tick deadline - the current time = duration to sleep for
             std::thread::sleep(next_tick - now);
@@ -67,6 +67,7 @@ fn main() {
         d.clear_background(Color::BLACK);
         d.draw_fps(0, 0);
 
+        // --- Draw pixels ------------------------------------------------------
         // Height
         for h in 0..32 {
             // Width
@@ -83,13 +84,13 @@ fn main() {
                 }
             }
         }
+        // ----------------------------------------------------------------------
     }
     // --------------------------------------------------------------------------
 
 
 
     // TODO:
-    // - Display
     // - Master clock
     //   - Calling cpu.tick_timers() at 60Hz
     // - Keyboard input
