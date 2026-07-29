@@ -76,7 +76,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "chip"
+name = "chirp"
 version = "0.0.1"
 dependencies = [
  "rand",
