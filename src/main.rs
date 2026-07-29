@@ -35,37 +35,42 @@ fn main() {
         .size(SCREEN_W, SCREEN_H)
         .title(window_title.as_str())
         .build();
-    rl.set_target_fps(60);
+    rl.set_target_fps(500);
 
     // At 500hz, CPU should cycle every 2 milliseconds.
     // 1 sec / 500 times = 0.002 secs, or 2 ms
     let cpu_hz         = 500;
     let cycle_interval = Duration::from_secs(1) / cpu_hz;
-    let timer_interval = Duration::from_secs(1) / 60; // Timers update at a fixed rate of 60Hz
+    let timer_interval = Duration::from_secs(1) / 60;
 
     // --- Main window loop -----------------------------------------------------
     while !rl.window_should_close() {
         // We assign the variable d to represent the active drawing context
         let mut d = rl.begin_drawing(&thread);
 
-        let mut next_tick = Instant::now();
-        // Run a cycle, then wait until delay has passed to run again
-        chip8.cycle();
-
-        // Determine the next tick deadline, then wait until then
-        next_tick += cycle_interval;
-        let now   =  Instant::now();
-        if next_tick > now {
-            // Tick deadline - the current time = duration to sleep for
-            std::thread::sleep(next_tick - now);
-        } else {
-            // If a cycle takes longer than 2ms, snap the next tick
-            // so we don't try to catch up
-            next_tick = now;
-        }
+        // TODO: Run chip8.cycle() and tick_timers() functions without blocking raylib
 
         d.clear_background(Color::BLACK);
         d.draw_fps(0, 0);
+
+        // --- Keypad input -----------------------------------------------------
+        chip8.keypad[0]  = d.is_key_pressed(KeyboardKey::KEY_ONE);
+        chip8.keypad[1]  = d.is_key_pressed(KeyboardKey::KEY_TWO);
+        chip8.keypad[2]  = d.is_key_pressed(KeyboardKey::KEY_THREE);
+        chip8.keypad[3]  = d.is_key_pressed(KeyboardKey::KEY_FOUR);
+        chip8.keypad[4]  = d.is_key_pressed(KeyboardKey::KEY_Q);
+        chip8.keypad[5]  = d.is_key_pressed(KeyboardKey::KEY_W);
+        chip8.keypad[6]  = d.is_key_pressed(KeyboardKey::KEY_E);
+        chip8.keypad[7]  = d.is_key_pressed(KeyboardKey::KEY_R);
+        chip8.keypad[8]  = d.is_key_pressed(KeyboardKey::KEY_A);
+        chip8.keypad[9]  = d.is_key_pressed(KeyboardKey::KEY_S);
+        chip8.keypad[10] = d.is_key_pressed(KeyboardKey::KEY_D);
+        chip8.keypad[11] = d.is_key_pressed(KeyboardKey::KEY_F);
+        chip8.keypad[12] = d.is_key_pressed(KeyboardKey::KEY_Z);
+        chip8.keypad[13] = d.is_key_pressed(KeyboardKey::KEY_X);
+        chip8.keypad[14] = d.is_key_pressed(KeyboardKey::KEY_C);
+        chip8.keypad[15] = d.is_key_pressed(KeyboardKey::KEY_V);
+        // ----------------------------------------------------------------------
 
         // --- Draw pixels ------------------------------------------------------
         // Height
@@ -85,14 +90,17 @@ fn main() {
             }
         }
         // ----------------------------------------------------------------------
+
+        if chip8.should_beep {
+            // TODO: Play beep
+            println!("Beep");
+        }
     }
     // --------------------------------------------------------------------------
 
 
 
     // TODO:
-    // - Master clock
-    //   - Calling cpu.tick_timers() at 60Hz
-    // - Keyboard input
+    // - Keypad input
     // - Audio output
 }

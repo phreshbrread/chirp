@@ -8,16 +8,17 @@ const FONTSET_SIZE:  usize = 80;    // Fonts only take up 80 bytes
 
 #[derive(Debug)]
 pub struct Chip8 {
-    pub memory:      [u8; 4096],     // 4KB of RAM (u8 is one byte)
-    pub registers:   [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
+    pub memory:      [u8; 4096],      // 4KB of RAM (u8 is one byte)
+    pub registers:   [u8; 16],        // Chip-8 has 16 registers, V0 - V9, and VA - VF
     pub index_reg:    u16,            // 16-bit register to hold memory addresses
     pub prog_ctr:     u16,            // Program counter
     pub stack:        Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
     pub delay_timer:  u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
     pub sound_timer:  u8,             // Same as delay_timer, but the system emits a beep if value > 0
-    pub keypad:      [bool; 16],     // 16 keys, either pressed or not pressed
+    pub keypad:      [bool; 16],      // 16 keys, either pressed or not pressed
     pub display:     [bool; 64 * 32], // 64 x 32 monochrome display, each pixel either on or off
-    pub og_behaviour: bool,
+    pub og_behaviour: bool,           // Toggle to emulate quirks of original hardware
+    pub should_beep:  bool,           // Flag to determine if beep sound should play
 }
 
 impl Chip8 {
@@ -31,8 +32,9 @@ impl Chip8 {
             delay_timer:  0,
             sound_timer:  0,
             keypad:      [false; 16],      // Set all keys to unpressed
-            display:     [false; 64 * 32], // Set all pixels to black (off)
+            display:     [false; 64 * 32], // Turn all pixels off
             og_behaviour: false,           // Default to modern behaviour
+            should_beep:  false,
         };
 
         new_cpu.load_font();
@@ -110,7 +112,19 @@ impl Chip8 {
     }
 
     pub fn tick_timers(&mut self) {
+        // Timer tick must run at 60hz independent of CPU cycles
 
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        // Beep should play if sound_timer is not zero
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+            self.should_beep = true;
+        } else {
+            self.should_beep = false;
+        }
     }
 
     pub fn cycle(&mut self) {
@@ -144,12 +158,6 @@ impl Chip8 {
         let n:   u8    =  (opcode & 0x000F)        as u8;    // Immediate nibble
         let nn:  u8    =  (opcode & 0x00FF)        as u8;    // Immediate byte
         let nnn: u16   =   opcode & 0x0FFF;                  // Memory address
-
-        // TODO: Maybe start using these instead, if it doesn't cause issues
-        let vf = self.registers[15];
-        let vx = self.registers[x];
-        let vy = self.registers[y];
-
         // -----------------------------------------------------------------
 
         // --- Execute -----------------------------------------------------
@@ -300,9 +308,24 @@ impl Chip8 {
                     },
 
                     0x6 => {
-                        // 8XY6: TODO
-                        // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-                        todo!("0x8XY6");
+                        // 8XY6: If the least significant bit of VX is 1, set VF
+                        // to 1 (otherwise 0), then divide VX by 2.
+
+                        // Original hardware would put the value of VY into VX first
+                        if self.og_behaviour {
+                            self.registers[x] = self.registers[y];
+                        }
+
+                        let tmp_vx = self.registers[x];
+
+                        // To get the LSB we just mask VX with a bitwise AND 1
+                        let lsb = tmp_vx & 1;
+
+                        self.registers[15] = lsb;
+
+                        // Divide the old value from VX by 2 by shifing the bits one place to the
+                        // right, then store that value in VX
+                        self.registers[x] = tmp_vx >> 1;
                     },
 
                     0x7 => {
@@ -311,70 +334,67 @@ impl Chip8 {
                     },
 
                     0xE => {
-                        // 8XYE:
-                        // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+                        // 8XYE: Similar to 8XY6, except we get the most significant bit and
+                        // multiply VX by 2 instead.
 
-                        // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise
-                        // to 0. Then Vx is multiplied by 2.
-                        //
-                        // In the CHIP-8 interpreter for the original COSMAC VIP,
-                        // this instruction did the following: It put the value
-                        // of VY into VX, and then shifted the value in VX 1 bit
-                        // to the right (8XY6) or left (8XYE).
-                        // VY was not affected, but the flag register VF would
-                        // be set to the bit that was shifted out.
-                        //
-                        // Shift the value of VX one bit to the right (8XY6) or left (8XYE)
-                        // Set VF to 1 if the bit that was shifted out was 1, or 0 if it was 0
+                        // If the most-significant bit of VX is 1, then VF is set to 1,
+                        // otherwise to 0. Then VX is multiplied by 2.
+
                         if self.og_behaviour {
                             self.registers[x] = self.registers[y];
                         }
 
-                        // Get significant bit of VX
-                        //
-                        // if (bit shifted was 1) {
-                        //   VF = 1;
-                        // } else {
-                        //   VF = 0;
-                        // }
+                        let tmp_vx = self.registers[x];
 
-                        self.registers[x] = self.registers[x] << 1;
+                        // To get the most significant bit (MSB), we shift the byte 7 bits to the
+                        // right to isolate the highest value bit.
+                        let msb: u8 = tmp_vx >> 7;
 
+                        // Directly set VF to 1 or 0 depending on MSB of VX
+                        self.registers[15] = msb;
 
-                        todo!("Finish 8XYE");
+                        // Shifting the bits left by 1 is essentially the same as multiplying the
+                        // value by 2
+                        self.registers[x] = tmp_vx << 1;
                     },
                     _ => unknown_opcode(opcode),
                 };
             },
 
             0x9 => {
-                // 9XY0: Skip next instruction if VX and VY are NOT equal
+                // 9XY0: Skip next instruction if VX and VY are NOT equal.
                 if self.registers[x] != self.registers[y] {
                     self.prog_ctr += 2;
                 }
             },
 
             0xA => {
-                // ANNN: Set value of index register to nnn
+                // ANNN: Set value of index register to nnn.
                 self.index_reg = nnn;
             },
 
             0xB => {
-                todo!("0xB group");
+                // BNNN (OG): Jump to NNN + V0
+                // BXNN (Modern): Jump to XNN (NNN) + VX
+                if self.og_behaviour {
+                    self.prog_ctr = nnn + self.registers[0] as u16;
+                } else {
+                    self.prog_ctr = nnn as u16 + self.registers[x] as u16;
+                }
             },
 
             0xC => {
-                // CXNN: Set VX to random byte AND nn
+                // CXNN: Set VX to random byte AND nn.
                 // First, generate a random number between 0 - 255, then perform a bitwise
-                // AND on it with the value in nn, finally storing the result in VX
+                // AND on it with the value in nn, finally storing the result in VX.
                 let random_byte: u8 = rand::random();
                 self.registers[x] = random_byte & nn;
             },
 
             // Display
             0xD => {
-                // DXYN: Draw to screen and check collisions
-                // Apply modulo to wrap sprites around edges if needed
+                // DXYN: Draw to screen and check collisions.
+                // Apply modulo to wrap sprites around edges if needed.
                 let start_x = self.registers[x] % 64;
                 let start_y = self.registers[y] % 32;
                 let height = n;
@@ -452,10 +472,20 @@ impl Chip8 {
                     },
 
                     0x33 => {
-                        // FX33: Store binary-coded decimal representation of VX in
-                        // memory locations index_reg, index_reg + 1 and index_reg + 2.
-                        // TODO: Implement
-                        todo!();
+                        // FX33: Take the hundreds, tens and ones digits from VX and place them
+                        // in memory locations index_reg, index_reg + 1 and index_reg + 2 respectively
+                        let tmp_vx = self.registers[x];
+
+                        // The method for digit is as follows:
+                        // Ones - Dividing by 10 leaves the remainder equal to its original last digit
+                        // Tens - Divide by 10 first to remove a decimal place, then get the
+                        // remainder of another division by 10
+                        // Hundreds - Same as tens, but divide by 100 first to remove two decimal
+                        // spots before getting the 10 remainder
+
+                        self.memory[self.index_reg as usize + 2] = tmp_vx % 10;       // Ones
+                        self.memory[self.index_reg as usize + 1] = tmp_vx / 10 % 10;  // Tens
+                        self.memory[self.index_reg as usize]     = tmp_vx / 100 % 10; // Hundreds
                     },
 
                     0x55 => {
@@ -496,27 +526,7 @@ impl Chip8 {
 
             _ => unknown_opcode(opcode),
         };
-
-        // 00E0 (clear screen)
-        // 1NNN (jump)
-        // 6XNN (set register VX)
-        // 7XNN (add value to register VX)
-        // ANNN (set index register I)
-        // DXYN (display/draw)
-
         // -----------------------------------------------------------------
-
-        // --- Update state -----------------------------------------------------------
-        // TODO: Update timers
-        // ----------------------------------------------------------------------------
-
-
-
-        // Chip-8 opcodes are 16 bits (2 bytes long).
-        // Virtual memory only stores 8 bits (1 byte) at a time.
-        // Each instruction is split between two adjacent memory slots.
-        // Each instruction must be fetched by getting the first and second byte,
-        // then combining them into a single two byte instruction.
     }
 }
 
