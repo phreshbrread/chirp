@@ -35,7 +35,7 @@ fn main() {
         .size(SCREEN_W, SCREEN_H)
         .title(window_title.as_str())
         .build();
-    rl.set_target_fps(500);
+    rl.set_target_fps(120);
 
     // At 500hz, CPU should cycle every 2 milliseconds.
     // 1 sec / 500 times = 0.002 secs, or 2 ms
@@ -49,6 +49,8 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         // TODO: Run chip8.cycle() and tick_timers() functions without blocking raylib
+        chip8.cycle();
+        chip8.tick_timers();
 
         d.clear_background(Color::BLACK);
         d.draw_fps(0, 0);
@@ -73,10 +75,8 @@ fn main() {
         // ----------------------------------------------------------------------
 
         // --- Draw pixels ------------------------------------------------------
-        // Height
-        for h in 0..32 {
-            // Width
-            for w in 0..64 {
+        for h in 0..32 {     // Height
+            for w in 0..64 { // Width
                 let pixel: i32 = (h * 64) + w;
 
                 if chip8.display[pixel as usize] == true {
@@ -97,10 +97,4 @@ fn main() {
         }
     }
     // --------------------------------------------------------------------------
-
-
-
-    // TODO:
-    // - Keypad input
-    // - Audio output
 }
