@@ -3,9 +3,8 @@ use std::time::{Instant, Duration};
 use raylib::prelude::*;
 use std::sync::Arc;
 
-// Include cpu.rs
+// Include cpu.rs and timers.rs
 mod cpu;
-mod cpu_new;
 mod timers;
 
 // Resources:
@@ -93,12 +92,11 @@ fn main() {
         chip8.keypad[15] = d.is_key_down(KeyboardKey::KEY_V);
         // ----------------------------------------------------------------------
 
+        // CPU should run at 500Hz
+        // TODO: Run in a seperate thread
         chip8.cycle(Arc::clone(&timer_handle));
 
-        // TODO: Sound
-
-        let s = Arc::clone(&timer_handle);
-        if s.should_beep() {
+        if Arc::clone(&timer_handle).should_beep() {
             beep.play();
         }
 
