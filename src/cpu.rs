@@ -2,6 +2,9 @@
 
 use std::io::Read;
 use std::fs::File;
+use std::sync::Arc;
+
+use crate::timers;
 
 const START_ADDRESS: u16   = 0x200; // First 512 bytes reserved for system
 const FONTSET_SIZE:  usize = 80;    // Fonts only take up 80 bytes
@@ -13,8 +16,6 @@ pub struct Chip8 {
     pub index_reg:    u16,            // 16-bit register to hold memory addresses
     pub prog_ctr:     u16,            // Program counter
     pub stack:        Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
-    pub delay_timer:  u8,             // Count down to 0 at 60Hz, independent of CPU clock speed
-    pub sound_timer:  u8,             // Same as delay_timer, but the system emits a beep if value > 0
     pub keypad:      [bool; 16],      // 16 keys, either pressed or not pressed
     pub display:     [bool; 64 * 32], // 64 x 32 monochrome display, each pixel either on or off
     pub og_behaviour: bool,           // Toggle to emulate quirks of original hardware
@@ -29,8 +30,6 @@ impl Chip8 {
             index_reg:    0,                      // Clear index register
             prog_ctr:     START_ADDRESS,          // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack:        Vec::with_capacity(16), // Call stack can hold up to 16 addresses
-            delay_timer:  0,
-            sound_timer:  0,
             keypad:      [false; 16],      // Set all keys to unpressed
             display:     [false; 64 * 32], // Turn all pixels off
             og_behaviour: false,           // Default to modern behaviour
@@ -112,25 +111,7 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
-    /*
-    pub fn tick_timers(&mut self) {
-        // Timer tick must run at 60hz independent of CPU cycles
-
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-        }
-
-        // Beep should play if sound_timer is not zero
-        if self.sound_timer > 0 {
-            self.sound_timer -= 1;
-            self.should_beep = true;
-        } else {
-            self.should_beep = false;
-        }
-    }
-    */
-
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self, timer: Arc<timers::ChipTimer>) {
         // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.
@@ -467,12 +448,12 @@ impl Chip8 {
 
                     0x07 => {
                         // FX07: Set VX to value of delay timer
-                        self.registers[x] = self.delay_timer;
+                        self.registers[x] = timer.read_dt();
                     },
 
                     0x15 => {
                         // FX15: Set delay timer equal to VX
-                        self.delay_timer = self.registers[x];
+                        timer.write_dt(self.registers[x]);
                     },
 
                     0x29 => {
@@ -542,8 +523,6 @@ impl Chip8 {
             _ => unknown_opcode(opcode),
         };
         // -----------------------------------------------------------------
-
-        // Tick timers
     }
 }
 

@@ -1,37 +1,46 @@
 use std::thread;
 use std::time::Duration;
 
-// Arc: Allows thread-safe shared ownership
-// MutEx: Mutal exclusive access
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 pub struct ChipTimer {
-    delay_timer: u8,
-    sound_timer: u8,
+    delay_timer: AtomicU8,
+    sound_timer: AtomicU8,
 }
 
 impl ChipTimer {
     pub fn new() -> Self {
-
         return ChipTimer {
-            delay_timer: 0,
-            sound_timer: 0,
+            delay_timer: AtomicU8::new(0),
+            sound_timer: AtomicU8::new(0),
         };
+    }
+
+    pub fn tick(&self) {
+        if self.delay_timer.load(Ordering::Relaxed) > 0 {
+            self.delay_timer.fetch_sub(1, Ordering::Relaxed);
+        }
+        dbg!(&self.delay_timer);
+
+        if self.sound_timer.load(Ordering::Relaxed) > 0 {
+            self.sound_timer.fetch_sub(1, Ordering::Relaxed);
+        }
+        dbg!(&self.sound_timer);
     }
 
     // Delay timer
     pub fn read_dt(&self) -> u8 {
-        return self.delay_timer;
+        return self.delay_timer.load(Ordering::Relaxed);
     }
-    pub fn write_dt(&mut self, val: u8) {
-        self.delay_timer = val;
+    pub fn write_dt(&self, val: u8) {
+        self.delay_timer.store(val, Ordering::Relaxed);
     }
 
     // Sound timer
     pub fn read_st(&self) -> u8 {
-        return self.sound_timer;
+        return self.sound_timer.load(Ordering::Relaxed);
     }
-    pub fn write_st(&mut self, val: u8) {
-        self.sound_timer = val;
+    pub fn write_st(&self, val: u8) {
+        self.sound_timer.store(val, Ordering::Relaxed);
     }
 }

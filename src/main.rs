@@ -1,6 +1,7 @@
-use std::{env, process};
+use std::{env, process, thread};
 use std::time::{Instant, Duration};
 use raylib::prelude::*;
+use std::sync::Arc;
 
 // Include cpu.rs
 mod cpu;
@@ -35,9 +36,22 @@ fn main() {
     const SCREEN_H: i32 = 32 * SCALE;
 
     // Initialize global timer handle
-    // TODO: Share this to functions properly
-    let timer_handle = timers::ChipTimer::new();
+    let timer_handle = Arc::new(timers::ChipTimer::new());
 
+    // --- Timer thread ----------------------------------------------------------
+    let timer_clone = Arc::clone(&timer_handle);
+    thread::spawn(move || {
+        // Timer updates at a fixed 60Hz
+        let interval = Duration::from_secs(1) / 60;
+
+        loop {
+            timer_clone.tick();
+            thread::sleep(interval);
+        }
+    });
+    // ---------------------------------------------------------------------------
+
+    // Raylib init
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
         .title(format!("Chip - {}", &args[1]).as_str())
@@ -71,6 +85,8 @@ fn main() {
         chip8.keypad[11] = d.is_key_down(KeyboardKey::KEY_C);
         chip8.keypad[15] = d.is_key_down(KeyboardKey::KEY_V);
         // ----------------------------------------------------------------------
+
+        chip8.cycle(Arc::clone(&timer_handle));
 
         // TODO: Sound
 
