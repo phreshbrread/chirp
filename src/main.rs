@@ -4,6 +4,7 @@ use raylib::prelude::*;
 
 // Include cpu.rs
 mod cpu;
+mod cpu_new;
 
 // TODO: Restructure emulator to use MPSC.
 
