@@ -1,34 +1,37 @@
 use std::thread;
 use std::time::Duration;
 
+// Arc: Allows thread-safe shared ownership
+// MutEx: Mutal exclusive access
+use std::sync::{Arc, Mutex};
+
 pub struct ChipTimer {
     delay_timer: u8,
     sound_timer: u8,
 }
 
-// This function should be run once at some point in main.rs
-pub fn start_timer_thread() {
-    // Timers decrement at a steady 60Hz
-    let timer_interval = Duration::from_secs(1) / 60;
+impl ChipTimer {
+    pub fn new() -> Self {
 
-    let mut timerStruct = ChipTimer {
-        delay_timer: 0,
-        sound_timer: 0,
-    };
+        return ChipTimer {
+            delay_timer: 0,
+            sound_timer: 0,
+        };
+    }
 
-    let t = thread::spawn(move || {
-        loop {
-            if timerStruct.delay_timer > 0 {
-                timerStruct.delay_timer -= 1;
-            }
+    // Delay timer
+    pub fn read_dt(&self) -> u8 {
+        return self.delay_timer;
+    }
+    pub fn write_dt(&mut self, val: u8) {
+        self.delay_timer = val;
+    }
 
-            if timerStruct.sound_timer > 0 {
-                timerStruct.sound_timer -= 1;
-            }
-
-            println!("Timers ticked");
-
-            thread::sleep(timer_interval);
-        }
-    });
+    // Sound timer
+    pub fn read_st(&self) -> u8 {
+        return self.sound_timer;
+    }
+    pub fn write_st(&mut self, val: u8) {
+        self.sound_timer = val;
+    }
 }

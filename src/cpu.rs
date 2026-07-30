@@ -112,6 +112,7 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
+    /*
     pub fn tick_timers(&mut self) {
         // Timer tick must run at 60hz independent of CPU cycles
 
@@ -127,6 +128,7 @@ impl Chip8 {
             self.should_beep = false;
         }
     }
+    */
 
     pub fn cycle(&mut self) {
         // --- Fetch stage -------------------------------------------------
@@ -540,6 +542,8 @@ impl Chip8 {
             _ => unknown_opcode(opcode),
         };
         // -----------------------------------------------------------------
+
+        // Tick timers
     }
 }
 

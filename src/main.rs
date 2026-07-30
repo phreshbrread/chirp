@@ -34,19 +34,15 @@ fn main() {
     const SCREEN_W: i32 = 64 * SCALE;
     const SCREEN_H: i32 = 32 * SCALE;
 
+    // Initialize global timer handle
+    // TODO: Share this to functions properly
+    let timer_handle = timers::ChipTimer::new();
+
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
         .title(format!("Chip - {}", &args[1]).as_str())
         .build();
     rl.set_target_fps(120);
-
-    // At 500hz, CPU should cycle every 2 milliseconds.
-    // 1 sec / 500 times = 0.002 secs, or 2 ms
-    let cpu_hz         = 500;
-    let cycle_interval = Duration::from_secs(1) / cpu_hz;
-
-    // Start ticking timers
-    timers::start_timer_thread();
 
     // --- Main window loop -----------------------------------------------------
     while !rl.window_should_close() {
@@ -54,7 +50,6 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         // --- Keypad input -----------------------------------------------------
-        // TODO: Redo this
         // Keys are in order from 1 - 9, 0, then A to F
         chip8.keypad[1]  = d.is_key_down(KeyboardKey::KEY_ONE);
         chip8.keypad[2]  = d.is_key_down(KeyboardKey::KEY_TWO);
