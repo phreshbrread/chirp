@@ -5,8 +5,7 @@ use raylib::prelude::*;
 // Include cpu.rs
 mod cpu;
 mod cpu_new;
-
-// TODO: Restructure emulator to use MPSC.
+mod timers;
 
 // Resources:
 //   - https://austinmorlan.com/posts/chip8_emulator/
@@ -35,10 +34,9 @@ fn main() {
     const SCREEN_W: i32 = 64 * SCALE;
     const SCREEN_H: i32 = 32 * SCALE;
 
-    let window_title = format!("Chip - {}", &args[1]);
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
-        .title(window_title.as_str())
+        .title(format!("Chip - {}", &args[1]).as_str())
         .build();
     rl.set_target_fps(120);
 
@@ -46,7 +44,9 @@ fn main() {
     // 1 sec / 500 times = 0.002 secs, or 2 ms
     let cpu_hz         = 500;
     let cycle_interval = Duration::from_secs(1) / cpu_hz;
-    let timer_interval = Duration::from_secs(1) / 60;
+
+    // Start ticking timers
+    timers::start_timer_thread();
 
     // --- Main window loop -----------------------------------------------------
     while !rl.window_should_close() {
@@ -54,6 +54,7 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         // --- Keypad input -----------------------------------------------------
+        // TODO: Redo this
         // Keys are in order from 1 - 9, 0, then A to F
         chip8.keypad[1]  = d.is_key_down(KeyboardKey::KEY_ONE);
         chip8.keypad[2]  = d.is_key_down(KeyboardKey::KEY_TWO);
@@ -76,14 +77,7 @@ fn main() {
         chip8.keypad[15] = d.is_key_down(KeyboardKey::KEY_V);
         // ----------------------------------------------------------------------
 
-        // TODO: Run chip8.cycle() and tick_timers() functions without blocking raylib
-        chip8.cycle();
-        chip8.tick_timers();
-
-        if chip8.should_beep {
-            // TODO: Play beep
-            println!("Beep");
-        }
+        // TODO: Sound
 
         // --- Draw pixels ------------------------------------------------------
         d.clear_background(Color::BLACK);
