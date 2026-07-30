@@ -26,6 +26,8 @@ fn main() {
     let mut chip8: cpu::Chip8 = cpu::Chip8::new();
     println!("Initialised CPU");
 
+    let arc_chip8 = Arc::new(cpu::Chip8::new());
+
     // Attempt to load ROM from first argument
     chip8.load_rom(&args[1]);
 
@@ -56,7 +58,12 @@ fn main() {
         .size(SCREEN_W, SCREEN_H)
         .title(format!("Chip - {}", &args[1]).as_str())
         .build();
-    rl.set_target_fps(120);
+    rl.set_target_fps(500);
+
+    let audio_handle = RaylibAudio::init_audio_device()
+        .expect("Failed to initialise audio device");
+    let beep = audio_handle.new_sound("assets/beep.wav")
+        .expect("Failed to load audio track");
 
     // --- Main window loop -----------------------------------------------------
     while !rl.window_should_close() {
@@ -89,6 +96,11 @@ fn main() {
         chip8.cycle(Arc::clone(&timer_handle));
 
         // TODO: Sound
+
+        let s = Arc::clone(&timer_handle);
+        if s.should_beep() {
+            beep.play();
+        }
 
         // --- Draw pixels ------------------------------------------------------
         d.clear_background(Color::BLACK);

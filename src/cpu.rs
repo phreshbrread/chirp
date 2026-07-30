@@ -67,7 +67,6 @@ impl Chip8 {
         println!("Loaded font set");
     }
 
-    // TODO: Check if rom size is greater than 512 bytes
     pub fn load_rom(&mut self, rp: &str) {
         let max_rom_size = 4096 - 512;
 
@@ -142,13 +141,13 @@ impl Chip8 {
         let n:   u8    =  (opcode & 0x000F)        as u8;    // Immediate nibble
         let nn:  u8    =  (opcode & 0x00FF)        as u8;    // Immediate byte
         let nnn: u16   =   opcode & 0x0FFF;                  // Memory address
-        // -----------------------------------------------------------------
+                                                             // -----------------------------------------------------------------
 
-        // --- Execute -----------------------------------------------------
-        // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
-        // so we can use n or nn to identify instructions in the same group
-        // Groups using n: 0x8 and D
-        // Groups using nn: 0x0, E, and F
+                                                             // --- Execute -----------------------------------------------------
+                                                             // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
+                                                             // so we can use n or nn to identify instructions in the same group
+                                                             // Groups using n: 0x8 and D
+                                                             // Groups using nn: 0x0, E, and F
         match n1 {
             0x0 => {
                 match nn {
@@ -440,15 +439,21 @@ impl Chip8 {
             // Timers, memory and fonts
             0xF => {
                 match nn {
-                    0x0A => {
-                        // FX0A: Pause execution until key is pressed
-                        // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Fx0A
-                        todo!("FX0A");
-                    },
-
                     0x07 => {
                         // FX07: Set VX to value of delay timer
                         self.registers[x] = timer.read_dt();
+                    },
+
+                    0x0A => {
+                        // FX0A: Pause execution until key is pressed.
+                        //
+                        // If no key is detected, we simply rewind execution by one step so we keep
+                        // hitting this check, otherwise, we can skip forward a step.
+                        if self.keypad.contains(&true) {
+                            self.prog_ctr += 2;
+                        } else {
+                            self.prog_ctr -= 2;
+                        }
                     },
 
                     0x15 => {
@@ -456,10 +461,21 @@ impl Chip8 {
                         timer.write_dt(self.registers[x]);
                     },
 
+                    0x18 => {
+                        // FX18: Set sound timer equal to VX
+                        timer.write_st(self.registers[x]);
+                    },
+
                     0x29 => {
-                        // FX29:
-                        // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Fx29
-                        todo!("FX29");
+                        // FX29: Set index_reg = location of sprite for digit VX.
+                        //
+                        // Take the 4 lower bits from VX, multiply it by 5 (byte size of font),
+                        // and add to the base address where font data is loaded (0x000).
+
+                        let lb = (self.registers[x] & 0x000F) as u8; // Get lower 4 bits from VX
+                        let shifted = (lb << 2) + lb;
+
+                        self.index_reg = (shifted + 0x000) as u16;
                     },
 
                     0x1E => {
@@ -501,15 +517,13 @@ impl Chip8 {
                     },
 
                     0x65 => {
-                        // FX65: Read registers V0 - VX from memory, starting at index_reg
+                        // FX65: Read registers V0 - VX from memory, starting at index_reg.
+                        //
+                        // Copy x + 1 bytes from RAM into V registers, from V0 - VX.
+                        let count = x + 1;
+                        let s = self.index_reg as usize;
 
-                        // Copy x + 1 bytes from RAM into V registers, from V0 - VX
-                        // TODO: Rewrite in a more idiomatic way
-                        let mut i = 0;
-                        while i <= x {
-                            self.registers[i] = self.memory[self.index_reg as usize + i];
-                            i += 1;
-                        }
+                        self.registers[..x + 1].copy_from_slice(&self.memory[s..s + count]);
 
                         if self.og_behaviour {
                             self.index_reg = self.index_reg.wrapping_add((x as u16) + 1);

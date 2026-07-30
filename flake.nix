@@ -10,9 +10,6 @@
   in
   {
     devShells.${system}.default = pkgs.mkShell {
-      buildInputs = with pkgs; [
-      ];
-
       nativeBuildInputs = with pkgs; [
         cargo
         rustc
@@ -38,6 +35,7 @@
         clang
         glfw
         wayland
+        alsa-lib
       ];
 
       BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.glibc.dev}/include";
@@ -45,7 +43,7 @@
       RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
 
       shellHook = ''
-        export LD_LIBRARY_PATH=${pkgs.libGL}/lib:${pkgs.libx11}/lib:${pkgs.libxrandr}/lib:${pkgs.libxinerama}/lib:${pkgs.libxcursor}/lib:${pkgs.libxi}/lib:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=${pkgs.libGL}/lib:${pkgs.libx11}/lib:${pkgs.libxrandr}/lib:${pkgs.libxinerama}/lib:${pkgs.libxcursor}/lib:${pkgs.libxi}/lib:${pkgs.alsa-lib}/lib:$LD_LIBRARY_PATH
       '';
     };
   };

@@ -1,11 +1,9 @@
-use std::thread;
-use std::time::Duration;
-
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicBool, Ordering};
 
 pub struct ChipTimer {
     delay_timer: AtomicU8,
     sound_timer: AtomicU8,
+    should_beep: AtomicBool,
 }
 
 impl ChipTimer {
@@ -13,6 +11,7 @@ impl ChipTimer {
         return ChipTimer {
             delay_timer: AtomicU8::new(0),
             sound_timer: AtomicU8::new(0),
+            should_beep: AtomicBool::new(false),
         };
     }
 
@@ -20,12 +19,13 @@ impl ChipTimer {
         if self.delay_timer.load(Ordering::Relaxed) > 0 {
             self.delay_timer.fetch_sub(1, Ordering::Relaxed);
         }
-        dbg!(&self.delay_timer);
 
         if self.sound_timer.load(Ordering::Relaxed) > 0 {
             self.sound_timer.fetch_sub(1, Ordering::Relaxed);
+            self.should_beep.store(true, Ordering::Relaxed);
+        } else {
+            self.should_beep.store(false, Ordering::Relaxed);
         }
-        dbg!(&self.sound_timer);
     }
 
     // Delay timer
@@ -42,5 +42,13 @@ impl ChipTimer {
     }
     pub fn write_st(&self, val: u8) {
         self.sound_timer.store(val, Ordering::Relaxed);
+    }
+
+    pub fn should_beep(&self) -> bool {
+        if self.should_beep.load(Ordering::Relaxed) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
