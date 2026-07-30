@@ -5,6 +5,8 @@ use raylib::prelude::*;
 // Include cpu.rs
 mod cpu;
 
+// TODO: Restructure emulator to use MPSC.
+
 // Resources:
 //   - https://austinmorlan.com/posts/chip8_emulator/
 //   - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
