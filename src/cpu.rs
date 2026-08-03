@@ -22,7 +22,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    pub fn new() -> Self {
+    pub fn new(og: bool) -> Self {
         let mut new_cpu = Self {
             memory:      [0; 4096],               // Clear memory
             registers:   [0; 16],                 // Clear registers
@@ -31,7 +31,7 @@ impl Chip8 {
             stack:        Vec::with_capacity(16), // Call stack can hold up to 16 addresses
             keypad:      [false; 16],      // Set all keys to unpressed
             display:     [false; 64 * 32], // Turn all pixels off
-            og_behaviour: false,           // Default to modern behaviour
+            og_behaviour: og,              // Set based on user choice
         };
 
         new_cpu.load_font();
@@ -69,10 +69,12 @@ impl Chip8 {
         let max_rom_size = 4096 - 512;
 
         // Let open() consume "rp" since we won't need it again
+        let mut rom_f = File::open(rp).expect("Failed to open ROM:");
+
         let mut rom_file = match File::open(rp) {
             Ok(data) => data,
             Err(error) => {
-                println!("Failed to open ROM: {}", error);
+                println!("Failed to open ROM: {:#?}", error);
                 std::process::exit(1);
             },
         };

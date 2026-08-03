@@ -14,19 +14,54 @@ mod timers;
 //   - https://wiki.xxiivv.com/site/chip8.html
 //   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
 
+#[derive(Debug)]
+struct Flag<'a> {
+    short:  String,
+    long:   String,
+    desc:   String,
+    active: &'a bool,
+}
+
 fn main() {
+    // --- Flags ------------------------------------------------
+    let original_behaviour = false;
+    let mut flags: Vec<Flag> = vec![
+        Flag {
+            short:  "-o".to_owned(),
+            long:   "--original".to_owned(),
+            desc:   "Emulates original behaviour".to_owned(),
+            active: &original_behaviour,
+        }];
+
     // Ensure arg is given
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        println!("Usage: chirp [ROM]");
-        process::exit(1);
+    let argv: Vec<String> = env::args().collect();
+    let argc = argv.len();
+    let mut activated_flags = 0;
+
+    dbg!(argc);
+    dbg!(flags.len());
+
+    for i in 1..argc {            // For each argument
+        for j in 0..flags.len() { // For each valid flag
+            if argv[i] == flags[j].short || argv[i] == flags[j].long {
+                flags[j].active = &true;
+                activated_flags += 1;
+            }
+        }
     }
 
-    let mut chip8: cpu::Chip8 = cpu::Chip8::new();
+    if activated_flags != (argc - 2) {
+        show_help();
+    }
+    // ----------------------------------------------------------
+
+    dbg!(&flags);
+
+    let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour);
     println!("Initialised CPU");
 
     // Attempt to load ROM from first argument
-    chip8.load_rom(&args[1]);
+    chip8.load_rom(&argv[argc - 1]);
 
     // Set pixel + screen scales
     // TODO: Allow for adjustment
@@ -53,7 +88,7 @@ fn main() {
     // Raylib init
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
-        .title(format!("Chip - {}", &args[1]).as_str())
+        .title(format!("Chip - {}", &argv[1]).as_str())
         .build();
     rl.set_target_fps(500);
 
@@ -119,4 +154,10 @@ fn main() {
         // ----------------------------------------------------------------------
     }
     // --------------------------------------------------------------------------
+}
+
+fn show_help() -> ! {
+    println!("USAGE:\n chirp [FLAGS] [ROM]\n");
+    println!("FLAGS:\n  -o     Emulate original behaviour");
+    process::exit(1);
 }
