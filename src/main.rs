@@ -1,5 +1,5 @@
 use std::{env, process, thread};
-use std::time::{Instant, Duration};
+use std::time::Duration;
 use raylib::prelude::*;
 use std::sync::Arc;
 
@@ -18,14 +18,12 @@ fn main() {
     // Ensure arg is given
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        println!("Usage: chip [ROM]");
+        println!("Usage: chirp [ROM]");
         process::exit(1);
     }
 
     let mut chip8: cpu::Chip8 = cpu::Chip8::new();
     println!("Initialised CPU");
-
-    let arc_chip8 = Arc::new(cpu::Chip8::new());
 
     // Attempt to load ROM from first argument
     chip8.load_rom(&args[1]);

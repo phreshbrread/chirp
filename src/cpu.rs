@@ -19,7 +19,6 @@ pub struct Chip8 {
     pub keypad:      [bool; 16],      // 16 keys, either pressed or not pressed
     pub display:     [bool; 64 * 32], // 64 x 32 monochrome display, each pixel either on or off
     pub og_behaviour: bool,           // Toggle to emulate quirks of original hardware
-    pub should_beep:  bool,           // Flag to determine if beep sound should play
 }
 
 impl Chip8 {
@@ -33,7 +32,6 @@ impl Chip8 {
             keypad:      [false; 16],      // Set all keys to unpressed
             display:     [false; 64 * 32], // Turn all pixels off
             og_behaviour: false,           // Default to modern behaviour
-            should_beep:  false,
         };
 
         new_cpu.load_font();

@@ -37,9 +37,9 @@ impl ChipTimer {
     }
 
     // Sound timer
-    pub fn read_st(&self) -> u8 {
-        return self.sound_timer.load(Ordering::Relaxed);
-    }
+    //pub fn read_st(&self) -> u8 {
+    //    return self.sound_timer.load(Ordering::Relaxed);
+    //}
     pub fn write_st(&self, val: u8) {
         self.sound_timer.store(val, Ordering::Relaxed);
     }
