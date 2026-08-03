@@ -36,9 +36,8 @@ fn main() {
     // Ensure arg is given
     let argv: Vec<String> = env::args().collect();
     let argc = argv.len();
-
     if argc < 2 {
-        show_help();
+        show_help(flags);
     }
 
     let mut activated_flags = 0;
@@ -53,11 +52,9 @@ fn main() {
     }
 
     if activated_flags != (argc - 2) {
-        show_help();
+        show_help(flags);
     }
     // ----------------------------------------------------------
-
-    dbg!(&flags);
 
     let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour);
     println!("Initialised CPU");
@@ -158,8 +155,13 @@ fn main() {
     // --------------------------------------------------------------------------
 }
 
-fn show_help() -> ! {
+fn show_help(f: Vec<Flag>) -> ! {
     println!("USAGE:\n chirp [FLAGS] [ROM]\n");
-    println!("FLAGS:\n  -o     Emulate original behaviour");
+    println!("FLAGS:");
+
+    for flag in f.iter() {
+        println!("  {:<5}{:<15}{:}", flag.short, flag.long, flag.desc);
+    }
+
     process::exit(1);
 }

@@ -69,15 +69,10 @@ impl Chip8 {
         let max_rom_size = 4096 - 512;
 
         // Let open() consume "rp" since we won't need it again
-        let mut rom_f = File::open(rp).expect("Failed to open ROM:");
-
-        let mut rom_file = match File::open(rp) {
-            Ok(data) => data,
-            Err(error) => {
-                println!("Failed to open ROM: {:#?}", error);
-                std::process::exit(1);
-            },
-        };
+        let mut rom_file = File::open(rp).unwrap_or_else(|e| {
+            println!("Failed to open ROM file: {}", e);
+            std::process::exit(1);
+        });
 
         // Read ROM contents into temporary buffer
         let mut tmp_buf = Vec::new();
@@ -123,8 +118,8 @@ impl Chip8 {
             ((self.memory[self.prog_ctr as usize] as u16) << 8) |
             (self.memory[self.prog_ctr as usize + 1]) as u16;
 
-        // Increment program counter
-        self.prog_ctr += 2;
+        self.prog_ctr += 2; // Increment program counter
+
         // -----------------------------------------------------------------
 
         // --- Decode ------------------------------------------------------
@@ -141,13 +136,14 @@ impl Chip8 {
         let n:   u8    =  (opcode & 0x000F)        as u8;    // Immediate nibble
         let nn:  u8    =  (opcode & 0x00FF)        as u8;    // Immediate byte
         let nnn: u16   =   opcode & 0x0FFF;                  // Memory address
-                                                             // -----------------------------------------------------------------
 
-                                                             // --- Execute -----------------------------------------------------
-                                                             // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
-                                                             // so we can use n or nn to identify instructions in the same group
-                                                             // Groups using n: 0x8 and D
-                                                             // Groups using nn: 0x0, E, and F
+        // -----------------------------------------------------------------
+
+        // --- Execute -----------------------------------------------------
+        // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
+        // so we can use n or nn to identify instructions in the same group
+        // Groups using n: 0x8 and D
+        // Groups using nn: 0x0, E, and F
         match n1 {
             0x0 => {
                 match nn {
