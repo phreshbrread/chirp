@@ -33,7 +33,6 @@
         wayland
         libGL
         clang
-        glfw
         wayland
         alsa-lib
       ];
