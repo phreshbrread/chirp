@@ -36,10 +36,12 @@ fn main() {
     // Ensure arg is given
     let argv: Vec<String> = env::args().collect();
     let argc = argv.len();
-    let mut activated_flags = 0;
 
-    dbg!(argc);
-    dbg!(flags.len());
+    if argc < 2 {
+        show_help();
+    }
+
+    let mut activated_flags = 0;
 
     for i in 1..argc {            // For each argument
         for j in 0..flags.len() { // For each valid flag
