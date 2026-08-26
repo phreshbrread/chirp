@@ -18,43 +18,51 @@ use chirp::*;
 fn main() {
     // --- Flags ------------------------------------------------
     let original_behaviour = false;
-    let mut flags: Vec<Flag> = vec![Flag::new(
-        "-o",
-        "--original",
-        "Emulates original hardware behaviour",
-        &original_behaviour,
-    )];
+    let rom_str: Box<str>;
 
-    // Ensure arg is given
-    let argv: Vec<String> = env::args().collect();
-    let argc = argv.len();
-    if argc < 2 {
-        show_help(flags);
-    }
+    // Handle argument stuff in its own scope so it can all be freed when we're done
+    {
+        let mut flags: Vec<Flag> = vec![Flag::new(
+            "-o",
+            "--original",
+            "Emulates original hardware behaviour",
+            &original_behaviour,
+        )];
 
-    let mut activated_flags = 0;
+        // Ensure arg is given
+        let mut argv: Vec<String> = env::args().collect();
+        let argc = argv.len();
 
-    for i in 1..argc {
-        // For each argument
-        for j in 0..flags.len() {
-            // For each valid flag
-            if *argv[i] == *flags[j].short || *argv[i] == *flags[j].long {
-                flags[j].active = &true;
-                activated_flags += 1;
+        // First argument is always binary path
+        if argc < 2 {
+            show_help(flags);
+        }
+
+        // Iterate through args and match to corresponding flag
+        let mut activated_flags = 0;
+        for arg in 1..argc {
+            for flag in 0..flags.len() {
+                if *argv[arg] == *flags[flag].short || *argv[arg] == *flags[flag].long {
+                    flags[flag].active = &true;
+                    activated_flags += 1;
+                }
             }
         }
+
+        if activated_flags != (argc - 2) {
+            show_help(flags);
+        }
+
+        rom_str = argv.pop().unwrap().into_boxed_str();
     }
 
-    if activated_flags != (argc - 2) {
-        show_help(flags);
-    }
     // ----------------------------------------------------------
 
     let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour);
     println!("Initialised CPU");
 
-    // Attempt to load ROM from first argument
-    chip8.load_rom(&argv[argc - 1]);
+    // Attempt to load ROM
+    chip8.load_rom(&rom_str);
 
     // Initialize global timer handle
     let timer_handle = Arc::new(ChipTimer::new());
@@ -75,7 +83,7 @@ fn main() {
     // Raylib init
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
-        .title(format!("Chirp - {}", &argv[1]).as_str())
+        .title(format!("Chirp | {}", rom_str).as_str())
         .build();
     rl.set_target_fps(500);
 
@@ -91,8 +99,8 @@ fn main() {
 
         chip8.keypad = poll_input(&d);
 
-        // CPU should run at 500Hz
-        // TODO: Run in a seperate thread
+        // TODO: This is fucking horrible PLEASE figure out how to run this in a seperate thread at
+        // a steady 500hz
         chip8.cycle(Arc::clone(&timer_handle));
 
         if timer_handle.should_beep() {
