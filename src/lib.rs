@@ -11,22 +11,22 @@ pub const SCREEN_W: i32 = 64 * SCREEN_SCALE;
 pub const SCREEN_H: i32 = 32 * SCREEN_SCALE;
 
 pub const CHIP8_KEYS: [KeyboardKey; 16] = [
-    KeyboardKey::KEY_X,
-    KeyboardKey::KEY_ONE,
-    KeyboardKey::KEY_TWO,
-    KeyboardKey::KEY_THREE,
-    KeyboardKey::KEY_Q,
-    KeyboardKey::KEY_W,
-    KeyboardKey::KEY_E,
-    KeyboardKey::KEY_A,
-    KeyboardKey::KEY_S,
-    KeyboardKey::KEY_D,
-    KeyboardKey::KEY_Z,
-    KeyboardKey::KEY_C,
-    KeyboardKey::KEY_FOUR,
-    KeyboardKey::KEY_R,
-    KeyboardKey::KEY_F,
-    KeyboardKey::KEY_V,
+    KeyboardKey::KEY_X,     // 0
+    KeyboardKey::KEY_ONE,   // 1
+    KeyboardKey::KEY_TWO,   // 2
+    KeyboardKey::KEY_THREE, // 3
+    KeyboardKey::KEY_Q,     // 4
+    KeyboardKey::KEY_W,     // 5
+    KeyboardKey::KEY_E,     // 6
+    KeyboardKey::KEY_A,     // 7
+    KeyboardKey::KEY_S,     // 8
+    KeyboardKey::KEY_D,     // 9
+    KeyboardKey::KEY_Z,     // A (10)
+    KeyboardKey::KEY_C,     // B (11)
+    KeyboardKey::KEY_FOUR,  // C (12)
+    KeyboardKey::KEY_R,     // D (13)
+    KeyboardKey::KEY_F,     // E (14)
+    KeyboardKey::KEY_V,     // F (15)
 ];
 
 #[derive(Debug)]
