@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU8, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 pub struct ChipTimer {
     delay_timer: AtomicU8,
@@ -6,6 +6,7 @@ pub struct ChipTimer {
     should_beep: AtomicBool,
 }
 
+// Isolate the new() function
 impl ChipTimer {
     pub fn new() -> Self {
         return ChipTimer {
@@ -14,7 +15,9 @@ impl ChipTimer {
             should_beep: AtomicBool::new(false),
         };
     }
+}
 
+impl ChipTimer {
     pub fn tick(&self) {
         if self.delay_timer.load(Ordering::Relaxed) > 0 {
             self.delay_timer.fetch_sub(1, Ordering::Relaxed);
@@ -37,18 +40,11 @@ impl ChipTimer {
     }
 
     // Sound timer
-    //pub fn read_st(&self) -> u8 {
-    //    return self.sound_timer.load(Ordering::Relaxed);
-    //}
     pub fn write_st(&self, val: u8) {
         self.sound_timer.store(val, Ordering::Relaxed);
     }
 
     pub fn should_beep(&self) -> bool {
-        if self.should_beep.load(Ordering::Relaxed) {
-            return true;
-        } else {
-            return false;
-        }
+        return self.should_beep.load(Ordering::Relaxed);
     }
 }
