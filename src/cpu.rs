@@ -1,6 +1,6 @@
 use std::{fs::File, io::Read, sync::Arc};
 
-use crate::timers;
+use crate::chip_timer::ChipTimer;
 use chirp::*;
 
 #[derive(Debug)]
@@ -99,7 +99,7 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
-    pub fn cycle(&mut self, timer: Arc<timers::ChipTimer>) {
+    pub fn cycle(&mut self, timer: Arc<ChipTimer>) {
         // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.

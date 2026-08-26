@@ -1,11 +1,12 @@
 use raylib::prelude::*;
 use std::{env, sync::Arc, thread, time::Duration};
 
-use chirp::*;
-
 // Include cpu.rs and timers.rs
+mod chip_timer;
 mod cpu;
-mod timers;
+
+use chip_timer::ChipTimer;
+use chirp::*;
 
 // Resources:
 //   - https://austinmorlan.com/posts/chip8_emulator/
@@ -56,7 +57,7 @@ fn main() {
     chip8.load_rom(&argv[argc - 1]);
 
     // Initialize global timer handle
-    let timer_handle = Arc::new(timers::ChipTimer::new());
+    let timer_handle = Arc::new(ChipTimer::new());
 
     // --- Timer thread ----------------------------------------------------------
     let timer_clone = Arc::clone(&timer_handle);
