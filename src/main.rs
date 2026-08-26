@@ -3,6 +3,8 @@ use std::time::Duration;
 use raylib::prelude::*;
 use std::sync::Arc;
 
+// TODO: Use MPSC to send cycle message, tick message and to send the screen buffer back to main
+
 // Include cpu.rs and timers.rs
 mod cpu;
 mod timers;
