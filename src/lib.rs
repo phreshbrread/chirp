@@ -31,10 +31,21 @@ pub const CHIP8_KEYS: [KeyboardKey; 16] = [
 
 #[derive(Debug)]
 pub struct Flag<'a> {
-    pub short: String,
-    pub long: String,
-    pub desc: String,
+    pub short: Box<str>,
+    pub long: Box<str>,
+    pub desc: Box<str>,
     pub active: &'a bool,
+}
+
+impl<'a> Flag<'a> {
+    pub fn new(s: &str, l: &str, d: &str, a: &'a bool) -> Self {
+        return Self {
+            short: s.into(),
+            long: l.into(),
+            desc: d.into(),
+            active: a,
+        };
+    }
 }
 
 pub fn poll_input(d: &RaylibDrawHandle) -> [bool; 16] {

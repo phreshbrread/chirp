@@ -17,12 +17,12 @@ mod timers;
 fn main() {
     // --- Flags ------------------------------------------------
     let original_behaviour = false;
-    let mut flags: Vec<Flag> = vec![Flag {
-        short: "-o".to_owned(),
-        long: "--original".to_owned(),
-        desc: "Emulates original behaviour".to_owned(),
-        active: &original_behaviour,
-    }];
+    let mut flags: Vec<Flag> = vec![Flag::new(
+        "-o",
+        "--original",
+        "Emulates original hardware behaviour",
+        &original_behaviour,
+    )];
 
     // Ensure arg is given
     let argv: Vec<String> = env::args().collect();
@@ -37,7 +37,7 @@ fn main() {
         // For each argument
         for j in 0..flags.len() {
             // For each valid flag
-            if argv[i] == flags[j].short || argv[i] == flags[j].long {
+            if *argv[i] == *flags[j].short || *argv[i] == *flags[j].long {
                 flags[j].active = &true;
                 activated_flags += 1;
             }
@@ -57,8 +57,6 @@ fn main() {
 
     // Initialize global timer handle
     let timer_handle = Arc::new(timers::ChipTimer::new());
-
-    //let arc_chip8 = Arc::new(&mut chip8);
 
     // --- Timer thread ----------------------------------------------------------
     let timer_clone = Arc::clone(&timer_handle);
