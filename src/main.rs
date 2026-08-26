@@ -1,9 +1,12 @@
-use std::{env, process, thread};
-use std::time::Duration;
-use raylib::prelude::*;
-use std::sync::Arc;
+use chirp::*;
 
-// TODO: Use MPSC to send cycle message, tick message and to send the screen buffer back to main
+use raylib::prelude::*;
+use std::{
+    env, process,
+    sync::{Arc, mpsc},
+    thread,
+    time::Duration,
+};
 
 // Include cpu.rs and timers.rs
 mod cpu;
@@ -18,22 +21,24 @@ mod timers;
 
 #[derive(Debug)]
 struct Flag<'a> {
-    short:  String,
-    long:   String,
-    desc:   String,
+    short: String,
+    long: String,
+    desc: String,
     active: &'a bool,
 }
 
 fn main() {
+    // TODO: Use MPSC to send cycle message, tick message and to send the screen buffer back to main
+    let (timer_tx, timer_rx) = mpsc::channel::<Chip8Event>();
+
     // --- Flags ------------------------------------------------
     let original_behaviour = false;
-    let mut flags: Vec<Flag> = vec![
-        Flag {
-            short:  "-o".to_owned(),
-            long:   "--original".to_owned(),
-            desc:   "Emulates original behaviour".to_owned(),
-            active: &original_behaviour,
-        }];
+    let mut flags: Vec<Flag> = vec![Flag {
+        short: "-o".to_owned(),
+        long: "--original".to_owned(),
+        desc: "Emulates original behaviour".to_owned(),
+        active: &original_behaviour,
+    }];
 
     // Ensure arg is given
     let argv: Vec<String> = env::args().collect();
@@ -44,8 +49,10 @@ fn main() {
 
     let mut activated_flags = 0;
 
-    for i in 1..argc {            // For each argument
-        for j in 0..flags.len() { // For each valid flag
+    for i in 1..argc {
+        // For each argument
+        for j in 0..flags.len() {
+            // For each valid flag
             if argv[i] == flags[j].short || argv[i] == flags[j].long {
                 flags[j].active = &true;
                 activated_flags += 1;
@@ -58,7 +65,7 @@ fn main() {
     }
     // ----------------------------------------------------------
 
-    let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour);
+    let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour, timer_rx);
     println!("Initialised CPU");
 
     // Attempt to load ROM from first argument
@@ -66,7 +73,7 @@ fn main() {
 
     // Set pixel + screen scales
     // TODO: Allow for adjustment
-    const SCALE:    i32 = 20;
+    const SCALE: i32 = 20;
     const SCREEN_W: i32 = 64 * SCALE;
     const SCREEN_H: i32 = 32 * SCALE;
 
@@ -74,13 +81,11 @@ fn main() {
     let timer_handle = Arc::new(timers::ChipTimer::new());
 
     // --- Timer thread ----------------------------------------------------------
-    let timer_clone = Arc::clone(&timer_handle);
-    thread::spawn(move || {
-        // Timer updates at a fixed 60Hz
+    let timer_thread = thread::spawn(move || {
         let interval = Duration::from_secs(1) / 60;
 
         loop {
-            timer_clone.tick();
+            timer_tx.send(Chip8Event::TickTimers).unwrap();
             thread::sleep(interval);
         }
     });
@@ -93,9 +98,9 @@ fn main() {
         .build();
     rl.set_target_fps(500);
 
-    let audio_handle = RaylibAudio::init_audio_device()
-        .expect("Failed to initialise audio device");
-    let beep = audio_handle.new_sound("assets/beep.wav")
+    let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
+    let beep = audio_handle
+        .new_sound("assets/beep.wav")
         .expect("Failed to load audio track");
 
     // --- Main window loop -----------------------------------------------------
@@ -105,23 +110,23 @@ fn main() {
 
         // --- Keypad input -----------------------------------------------------
         // Keys are in order from 1 - 9, 0, then A to F
-        chip8.keypad[1]  = d.is_key_down(KeyboardKey::KEY_ONE);
-        chip8.keypad[2]  = d.is_key_down(KeyboardKey::KEY_TWO);
-        chip8.keypad[3]  = d.is_key_down(KeyboardKey::KEY_THREE);
+        chip8.keypad[1] = d.is_key_down(KeyboardKey::KEY_ONE);
+        chip8.keypad[2] = d.is_key_down(KeyboardKey::KEY_TWO);
+        chip8.keypad[3] = d.is_key_down(KeyboardKey::KEY_THREE);
         chip8.keypad[12] = d.is_key_down(KeyboardKey::KEY_FOUR);
 
-        chip8.keypad[4]  = d.is_key_down(KeyboardKey::KEY_Q);
-        chip8.keypad[5]  = d.is_key_down(KeyboardKey::KEY_W);
-        chip8.keypad[6]  = d.is_key_down(KeyboardKey::KEY_E);
+        chip8.keypad[4] = d.is_key_down(KeyboardKey::KEY_Q);
+        chip8.keypad[5] = d.is_key_down(KeyboardKey::KEY_W);
+        chip8.keypad[6] = d.is_key_down(KeyboardKey::KEY_E);
         chip8.keypad[13] = d.is_key_down(KeyboardKey::KEY_R);
 
-        chip8.keypad[7]  = d.is_key_down(KeyboardKey::KEY_A);
-        chip8.keypad[8]  = d.is_key_down(KeyboardKey::KEY_S);
-        chip8.keypad[9]  = d.is_key_down(KeyboardKey::KEY_D);
+        chip8.keypad[7] = d.is_key_down(KeyboardKey::KEY_A);
+        chip8.keypad[8] = d.is_key_down(KeyboardKey::KEY_S);
+        chip8.keypad[9] = d.is_key_down(KeyboardKey::KEY_D);
         chip8.keypad[14] = d.is_key_down(KeyboardKey::KEY_F);
 
         chip8.keypad[10] = d.is_key_down(KeyboardKey::KEY_Z);
-        chip8.keypad[0]  = d.is_key_down(KeyboardKey::KEY_X);
+        chip8.keypad[0] = d.is_key_down(KeyboardKey::KEY_X);
         chip8.keypad[11] = d.is_key_down(KeyboardKey::KEY_C);
         chip8.keypad[15] = d.is_key_down(KeyboardKey::KEY_V);
         // ----------------------------------------------------------------------
@@ -138,17 +143,14 @@ fn main() {
         d.clear_background(Color::BLACK);
         d.draw_fps(0, 0);
 
-        for h in 0..32 {     // Height
-            for w in 0..64 { // Width
+        for h in 0..32 {
+            // Height
+            for w in 0..64 {
+                // Width
                 let pixel: i32 = (h * 64) + w;
 
                 if chip8.display[pixel as usize] == true {
-                    d.draw_rectangle(
-                        w * SCALE,
-                        h * SCALE,
-                        SCALE,
-                        SCALE,
-                        Color::WHITE);
+                    d.draw_rectangle(w * SCALE, h * SCALE, SCALE, SCALE, Color::WHITE);
                 }
             }
         }

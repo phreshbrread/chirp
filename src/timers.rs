@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU8, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 pub struct ChipTimer {
     delay_timer: AtomicU8,
