@@ -1,7 +1,10 @@
 use std::{
     fs::File,
     io::Read,
-    sync::{Arc, mpsc::Sender},
+    sync::{
+        Arc,
+        mpsc::{Receiver, Sender},
+    },
 };
 
 use crate::chip_timer::ChipTimer;
@@ -66,7 +69,6 @@ impl Chip8 {
     pub fn load_rom(&mut self, rp: &str) {
         let max_rom_size = 4096 - 512;
 
-        // Let open() consume "rp" since we won't need it again
         let mut rom_file = File::open(rp).unwrap_or_else(|e| {
             println!("Failed to open ROM file: {}", e);
             std::process::exit(1);
@@ -75,7 +77,6 @@ impl Chip8 {
         // Read ROM contents into temporary buffer
         let mut tmp_buf = Vec::new();
         match rom_file.read_to_end(&mut tmp_buf) {
-            // () here means we do nothing if the read is successful
             Ok(_) => (),
             Err(e) => {
                 println!("Error occurred: {:?}", e);
@@ -103,7 +104,18 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
-    pub fn cycle(&mut self, timer: Arc<ChipTimer>, display_tx: &Sender<DisplayArray>) {
+    pub fn cycle(
+        &mut self,
+        timer: Arc<ChipTimer>,
+        display_tx: &Sender<DisplayArray>,
+        keypad_rx: &Receiver<KeypadArray>,
+    ) {
+        // Update keypad if necessary
+        self.keypad = match keypad_rx.try_recv() {
+            Err(_) => self.keypad,
+            Ok(o) => o,
+        };
+
         // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.

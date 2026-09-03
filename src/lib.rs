@@ -1,4 +1,7 @@
-use raylib::prelude::{KeyboardKey, RaylibDrawHandle};
+use raylib::{
+    RaylibHandle,
+    prelude::{KeyboardKey, RaylibDrawHandle},
+};
 use std::process;
 
 pub const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
@@ -50,6 +53,16 @@ impl<'a> Flag<'a> {
             active: a,
         };
     }
+}
+
+pub fn poll_input_new(d: &RaylibHandle) -> KeypadArray {
+    let mut keypad = [false; 16];
+
+    for (index, &key) in CHIP8_KEYS.iter().enumerate() {
+        keypad[index] = d.is_key_down(key);
+    }
+
+    return keypad;
 }
 
 pub fn poll_input(d: &RaylibDrawHandle) -> KeypadArray {
