@@ -1,30 +1,34 @@
-use std::{fs::File, io::Read, sync::Arc};
+use std::{
+    fs::File,
+    io::Read,
+    sync::{Arc, mpsc::Sender},
+};
 
 use crate::chip_timer::ChipTimer;
 use chirp::*;
 
 #[derive(Debug)]
 pub struct Chip8 {
-    pub memory: [u8; 4096],       // 4KB of RAM (u8 is one byte)
-    pub registers: [u8; 16],      // Chip-8 has 16 registers, V0 - V9, and VA - VF
-    pub index_reg: u16,           // 16-bit register to hold memory addresses
-    pub prog_ctr: u16,            // Program counter
-    pub stack: Vec<u16>, // Call stack - list of memory addresses to keep track of subroutines
-    pub keypad: [bool; 16], // 16 keys, either pressed or not pressed
-    pub display: [bool; 64 * 32], // 64 x 32 monochrome display, each pixel either on or off
-    pub og_behaviour: bool, // Toggle to emulate quirks of original hardware
+    pub memory: [u8; 4096],    // 4KB of RAM (u8 is one byte)
+    pub registers: [u8; 16],   // Chip-8 has 16 registers, V0 - V9, and VA - VF
+    pub index_reg: u16,        // 16-bit register to hold memory addresses
+    pub pcounter: u16,         // Program counter
+    pub stack: Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
+    pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
+    pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
+    pub og_behaviour: bool,    // Toggle to emulate quirks of original hardware
 }
 
 impl Chip8 {
     pub fn new(og: bool) -> Self {
         let mut new_cpu = Self {
-            memory: [0; 4096],             // Clear memory
-            registers: [0; 16],            // Clear registers
-            index_reg: 0,                  // Clear index register
-            prog_ctr: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
+            memory: [0; 4096],                    // Clear memory
+            registers: [0; 16],                   // Clear registers
+            index_reg: 0,                         // Clear index register
+            pcounter: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack: Vec::with_capacity(16), // Call stack can hold up to 16 addresses
             keypad: [false; 16],     // Set all keys to unpressed
-            display: [false; 64 * 32], // Turn all pixels off
+            display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
         };
 
@@ -99,7 +103,7 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
     }
 
-    pub fn cycle(&mut self, timer: Arc<ChipTimer>) {
+    pub fn cycle(&mut self, timer: Arc<ChipTimer>, display_tx: &Sender<DisplayArray>) {
         // --- Fetch stage -------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.
@@ -108,10 +112,10 @@ impl Chip8 {
         // are on the right hand side of the container, so we shift them 8
         // bits to the left using "<< 8" and then use a bitwise OR (|) to
         // essentially append the next byte to form a full 16-bit opcode
-        let opcode: u16 = ((self.memory[self.prog_ctr as usize] as u16) << 8)
-            | (self.memory[self.prog_ctr as usize + 1]) as u16;
+        let opcode: u16 = ((self.memory[self.pcounter as usize] as u16) << 8)
+            | (self.memory[self.pcounter as usize + 1]) as u16;
 
-        self.prog_ctr += 2; // Increment program counter
+        self.pcounter += 2; // Increment program counter
 
         // -----------------------------------------------------------------
 
@@ -143,12 +147,13 @@ impl Chip8 {
                     0xE0 => {
                         // 00E0: Clear the screen
                         self.display.fill(false);
+                        display_tx.send(self.display);
                     }
 
                     0xEE => {
                         // 00EE: Set program counter to the last address on the stack,
                         // then pop said address
-                        self.prog_ctr = self.stack.pop().expect("Failed to return from subroutine");
+                        self.pcounter = self.stack.pop().expect("Failed to return from subroutine");
                     }
                     _ => unknown_opcode(opcode),
                 }
@@ -156,34 +161,34 @@ impl Chip8 {
 
             0x1 => {
                 // 1NNN: Jump to nnn
-                self.prog_ctr = nnn;
+                self.pcounter = nnn;
             }
 
             0x2 => {
                 // 2NNN: Save / push the current program counter to the stack so we can
                 // return later, then set the program counter to NNN
-                self.stack.push(self.prog_ctr);
-                self.prog_ctr = nnn;
+                self.stack.push(self.pcounter);
+                self.pcounter = nnn;
             }
 
             0x3 => {
                 // 3XNN: Skip next instruction if VX = nn
                 if self.registers[x] == nn {
-                    self.prog_ctr += 2;
+                    self.pcounter += 2;
                 }
             }
 
             0x4 => {
                 // 4XNN: Skip next instruction if VX != nn
                 if self.registers[x] != nn {
-                    self.prog_ctr += 2;
+                    self.pcounter += 2;
                 }
             }
 
             0x5 => {
                 // 5XY0: Skip next instruction if VX and VY are equal
                 if self.registers[x] == self.registers[y] {
-                    self.prog_ctr += 2;
+                    self.pcounter += 2;
                 }
             }
 
@@ -334,7 +339,7 @@ impl Chip8 {
             0x9 => {
                 // 9XY0: Skip next instruction if VX and VY are NOT equal.
                 if self.registers[x] != self.registers[y] {
-                    self.prog_ctr += 2;
+                    self.pcounter += 2;
                 }
             }
 
@@ -347,9 +352,9 @@ impl Chip8 {
                 // BNNN (OG): Jump to NNN + V0
                 // BXNN (Modern): Jump to XNN (NNN) + VX
                 if self.og_behaviour {
-                    self.prog_ctr = nnn + self.registers[0] as u16;
+                    self.pcounter = nnn + self.registers[0] as u16;
                 } else {
-                    self.prog_ctr = nnn as u16 + self.registers[x] as u16;
+                    self.pcounter = nnn as u16 + self.registers[x] as u16;
                 }
             }
 
@@ -398,6 +403,8 @@ impl Chip8 {
                 } else {
                     self.registers[15] = 0;
                 }
+
+                display_tx.send(self.display);
             }
 
             // Keypad checks
@@ -408,14 +415,14 @@ impl Chip8 {
                     0x9E => {
                         // EX9A: Skip next instruction if the key with value in VX is pressed
                         if self.keypad[key] {
-                            self.prog_ctr += 2;
+                            self.pcounter += 2;
                         }
                     }
 
                     0xA1 => {
                         // EXA1: Skip the next instruction if key with value in VX is not pressed
                         if !self.keypad[key] {
-                            self.prog_ctr += 2;
+                            self.pcounter += 2;
                         }
                     }
 
@@ -437,9 +444,9 @@ impl Chip8 {
                         // If no key is detected, we simply rewind execution by one step so we keep
                         // hitting this check, otherwise, we can skip forward a step.
                         if self.keypad.contains(&true) {
-                            self.prog_ctr += 2;
+                            self.pcounter += 2;
                         } else {
-                            self.prog_ctr -= 2;
+                            self.pcounter -= 2;
                         }
                     }
 

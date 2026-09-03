@@ -1,4 +1,5 @@
 use raylib::prelude::*;
+use std::sync::mpsc;
 use std::{env, sync::Arc, thread, time::Duration};
 
 // Include cpu.rs and timers.rs
@@ -64,12 +65,13 @@ fn main() {
     // Attempt to load ROM
     chip8.load_rom(&rom_str);
 
+    let (mut display_tx, display_rx) = mpsc::channel();
+
     // Initialize global timer handle
     let timer_handle = Arc::new(ChipTimer::new());
 
-    // --- Timer thread ----------------------------------------------------------
     let timer_clone = Arc::clone(&timer_handle);
-    thread::spawn(move || {
+    let _timer_thread = thread::spawn(move || {
         // Timer updates at a fixed 60Hz
         let interval = Duration::from_secs(1) / 60;
 
@@ -78,37 +80,53 @@ fn main() {
             thread::sleep(interval);
         }
     });
-    // ---------------------------------------------------------------------------
 
-    // Raylib init
+    // --- Raylib init --------------------------------
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
         .title(format!("Chirp | {}", rom_str).as_str())
         .build();
-    rl.set_target_fps(500);
+    rl.set_target_fps(60);
+    // ------------------------------------------------
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
     let beep = audio_handle
         .new_sound("assets/beep.wav")
         .expect("Failed to load beep sound file");
 
+    let _cycle_thread = thread::spawn(move || {
+        let interval = Duration::from_secs(1) / 500;
+
+        loop {
+            // TODO: Fix input
+            //chip8.keypad = poll_input(&d);
+            chip8.cycle(Arc::clone(&timer_handle), &display_tx);
+
+            // TODO: Account for drift
+            thread::sleep(interval);
+        }
+    });
+
+    // Set screen to blank
+    let mut screen = [false; CHIP8_DISPLAY_SIZE];
+
     // Main window loop
     while !rl.window_should_close() {
         // We assign the variable d to represent the active drawing context
         let mut d = rl.begin_drawing(&thread);
 
-        chip8.keypad = poll_input(&d);
+        // TODO: Fix sound
+        // if timer_handle.should_beep() {
+        //     beep.play();
+        // }
 
-        // TODO: This is fucking horrible PLEASE figure out how to run this in a seperate thread at
-        // a steady 500hz
-        chip8.cycle(Arc::clone(&timer_handle));
-
-        if timer_handle.should_beep() {
-            beep.play();
-        }
-
-        // --- Draw pixels ------------------------------------------------------
         d.clear_background(Color::BLACK);
+
+        // Only update display array if it changes
+        screen = match display_rx.try_recv() {
+            Err(_) => screen,
+            Ok(o) => o,
+        };
 
         for h in 0..32 {
             // Height
@@ -116,7 +134,7 @@ fn main() {
                 // Width
                 let pixel: i32 = (h * 64) + w;
 
-                if chip8.display[pixel as usize] == true {
+                if screen[pixel as usize] == true {
                     d.draw_rectangle(
                         w * SCREEN_SCALE,
                         h * SCREEN_SCALE,
@@ -129,6 +147,5 @@ fn main() {
         }
 
         d.draw_fps(0, 0);
-        // ----------------------------------------------------------------------
     }
 }

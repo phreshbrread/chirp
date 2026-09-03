@@ -29,6 +29,10 @@ pub const CHIP8_KEYS: [KeyboardKey; 16] = [
     KeyboardKey::KEY_V,     // F (15)
 ];
 
+pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
+pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
+pub type KeypadArray = [bool; 16];
+
 #[derive(Debug)]
 pub struct Flag<'a> {
     pub short: Box<str>,
@@ -48,7 +52,7 @@ impl<'a> Flag<'a> {
     }
 }
 
-pub fn poll_input(d: &RaylibDrawHandle) -> [bool; 16] {
+pub fn poll_input(d: &RaylibDrawHandle) -> KeypadArray {
     let mut keypad = [false; 16];
 
     for (index, &key) in CHIP8_KEYS.iter().enumerate() {
