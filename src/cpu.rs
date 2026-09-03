@@ -20,6 +20,8 @@ pub struct Chip8 {
     pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
     pub og_behaviour: bool,    // Toggle to emulate quirks of original hardware
+    pub delay_timer: u8,
+    pub sound_timer: u8,
 }
 
 impl Chip8 {
@@ -33,6 +35,8 @@ impl Chip8 {
             keypad: [false; 16],     // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
+            delay_timer: 0,
+            sound_timer: 0,
         };
 
         new_cpu.load_font();
@@ -116,7 +120,7 @@ impl Chip8 {
             Ok(o) => o,
         };
 
-        // --- Fetch stage -------------------------------------------------
+        // --- Fetching ----------------------------------------------------
         // Fetch the next two bytes from the program counter
         // and combine them into a single 16-bit instruction.
         //
@@ -124,20 +128,22 @@ impl Chip8 {
         // are on the right hand side of the container, so we shift them 8
         // bits to the left using "<< 8" and then use a bitwise OR (|) to
         // essentially append the next byte to form a full 16-bit opcode
+        // -----------------------------------------------------------------
+
         let opcode: u16 = ((self.memory[self.pcounter as usize] as u16) << 8)
             | (self.memory[self.pcounter as usize + 1]) as u16;
 
         self.pcounter += 2; // Increment program counter
 
-        // -----------------------------------------------------------------
 
-        // --- Decode ------------------------------------------------------
+        // --- Decoding ----------------------------------------------------
         // When fetching an opcode like 0x6A02, it comes as a raw, packed 16-bit chunk of binary
         // data. The CPU cannot simply execute it as-is, and instead must route different pieces
         // of that 16-bit number to different parts of its virtual circuitry.
         // To do that, we slice that 16-bit number into four individual 4-bit variables
         // (called nibbles, as they are half the size of a byte), and then recombining those
         // nibbles to form the system's core variables: X, Y, N, NN, and NNN.
+        // -----------------------------------------------------------------
 
         let n1: u8 = ((opcode & 0xF000) >> 12) as u8; // Primary opcode group identifier
         let x: usize = ((opcode & 0x0F00) >> 8) as usize; // Target register index
@@ -146,13 +152,14 @@ impl Chip8 {
         let nn: u8 = (opcode & 0x00FF) as u8; // Immediate byte
         let nnn: u16 = opcode & 0x0FFF; // Memory address
 
-        // -----------------------------------------------------------------
 
-        // --- Execute -----------------------------------------------------
+        // --- Executing ---------------------------------------------------
         // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
         // so we can use n or nn to identify instructions in the same group
         // Groups using n: 0x8 and D
         // Groups using nn: 0x0, E, and F
+        // -----------------------------------------------------------------
+
         match n1 {
             0x0 => {
                 match nn {
@@ -542,9 +549,18 @@ impl Chip8 {
 
             _ => unknown_opcode(opcode),
         };
-        // -----------------------------------------------------------------
     }
+
+    //fn tick_timers(&mut self) {
+    //    if self.delay_timer > 0 {
+    //        self.delay_timer -= 1;
+    //    }
+    //    if self.sound_timer > 0 {
+    //        self.sound_timer -= 1;
+    //    }
+    //}
 }
+
 
 fn unknown_opcode(oc: u16) -> ! {
     panic!("Unimplemented: {:#06X}", oc);
