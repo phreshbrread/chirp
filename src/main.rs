@@ -1,3 +1,5 @@
+// NOTE: Input & sound are currently broken due to changes in cycle logic
+
 use raylib::prelude::*;
 use std::sync::mpsc;
 use std::{env, sync::Arc, thread, time::Duration};
