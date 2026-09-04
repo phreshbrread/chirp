@@ -1,6 +1,10 @@
 use raylib::prelude::*;
-use std::sync::mpsc;
-use std::{env, sync::Arc, thread, time::Duration};
+use std::{
+    env,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+    time::Duration,
+};
 
 // Include cpu.rs and timers.rs
 mod chip_timer;
@@ -20,6 +24,9 @@ fn main() {
     // --- Flags ------------------------------------------------
     let original_behaviour = false;
     let rom_str: Box<str>;
+
+    let shared_framebuffer: Arc<Mutex<DisplayArray>> =
+        Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
 
     // Handle argument stuff in its own scope so it can all be freed when we're done
     {
@@ -66,7 +73,6 @@ fn main() {
     chip8.load_rom(&rom_str);
 
     // Set up channels
-    let (mut display_tx, display_rx) = mpsc::sync_channel(2);
     let (mut keypad_tx, keypad_rx) = mpsc::channel();
 
     // Initialize global timer handle
@@ -99,11 +105,12 @@ fn main() {
         .expect("Failed to load beep sound file");
 
     let timer_clone = Arc::clone(&timer_handle);
+    let cycle_framebuffer = Arc::clone(&shared_framebuffer);
     let _cycle_thread = thread::spawn(move || {
         let interval = Duration::from_secs(1) / 500;
 
         loop {
-            chip8.cycle(Arc::clone(&timer_clone), &display_tx, &keypad_rx);
+            chip8.cycle(&timer_clone, &cycle_framebuffer, &keypad_rx);
 
             // TODO: Account for drift
             thread::sleep(interval);
@@ -125,15 +132,11 @@ fn main() {
         if timer_handle.should_beep() {
             beep.play();
         }
+        d.clear_background(Color::BLACK);
 
         // Only update display array if it changes
-        screen = match display_rx.try_recv() {
-            Err(_) => screen,
-            Ok(o) => {
-                d.clear_background(Color::BLACK);
-                o
-            }
-        };
+        // TODO
+        let screen = { *shared_framebuffer.lock().unwrap() };
 
         for h in 0..32 {
             // Height

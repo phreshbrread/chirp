@@ -2,7 +2,7 @@ use std::{
     fs::File,
     io::Read,
     sync::{
-        Arc,
+        Arc, Mutex,
         mpsc::{Receiver, Sender, SyncSender},
     },
 };
@@ -112,8 +112,8 @@ impl Chip8 {
 
     pub fn cycle(
         &mut self,
-        timer: Arc<ChipTimer>,
-        display_tx: &SyncSender<DisplayArray>,
+        timer: &Arc<ChipTimer>,
+        cycle_framebuffer: &Arc<Mutex<DisplayArray>>,
         keypad_rx: &Receiver<KeypadArray>,
     ) {
         // Update keypad if necessary
@@ -166,7 +166,10 @@ impl Chip8 {
                     0xE0 => {
                         // 00E0: Clear the screen
                         self.display.fill(false);
-                        //display_tx.try_send(self.display);
+
+                        if let Ok(mut lock) = cycle_framebuffer.lock() {
+                            *lock = self.display;
+                        }
                     }
 
                     0xEE => {
@@ -423,7 +426,9 @@ impl Chip8 {
                     self.registers[15] = 0;
                 }
 
-                //display_tx.try_send(self.display);
+                        if let Ok(mut lock) = cycle_framebuffer.lock() {
+                            *lock = self.display;
+                        }
             }
 
             // Keypad checks
@@ -551,7 +556,7 @@ impl Chip8 {
         };
 
         // Update frame each cycle
-        display_tx.try_send(self.display);
+                //display_tx.try_send(self.display);
     }
 
     //fn tick_timers(&mut self) {
