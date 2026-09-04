@@ -66,7 +66,7 @@ fn main() {
     chip8.load_rom(&rom_str);
 
     // Set up channels
-    let (mut display_tx, display_rx) = mpsc::channel();
+    let (mut display_tx, display_rx) = mpsc::sync_channel(2);
     let (mut keypad_tx, keypad_rx) = mpsc::channel();
 
     // Initialize global timer handle
@@ -98,11 +98,12 @@ fn main() {
         .new_sound("assets/beep.wav")
         .expect("Failed to load beep sound file");
 
+    let timer_clone = Arc::clone(&timer_handle);
     let _cycle_thread = thread::spawn(move || {
         let interval = Duration::from_secs(1) / 500;
 
         loop {
-            chip8.cycle(Arc::clone(&timer_handle), &display_tx, &keypad_rx);
+            chip8.cycle(Arc::clone(&timer_clone), &display_tx, &keypad_rx);
 
             // TODO: Account for drift
             thread::sleep(interval);
@@ -118,19 +119,20 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         // Send input first
-        keypad_tx.send(poll_input(&d));
+        keypad_tx.send(poll_input(&d)).unwrap();
 
-        // TODO: Fix sound
+        // TODO: Fix choppy audio
         if timer_handle.should_beep() {
             beep.play();
         }
 
-        d.clear_background(Color::BLACK);
-
         // Only update display array if it changes
         screen = match display_rx.try_recv() {
             Err(_) => screen,
-            Ok(o) => o,
+            Ok(o) => {
+                d.clear_background(Color::BLACK);
+                o
+            }
         };
 
         for h in 0..32 {

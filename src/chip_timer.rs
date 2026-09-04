@@ -6,7 +6,7 @@ pub struct ChipTimer {
     should_beep: AtomicBool,
 }
 
-// Isolate the new() function
+// Isolate the constructor
 impl ChipTimer {
     pub fn new() -> Self {
         return ChipTimer {

@@ -3,7 +3,7 @@ use std::{
     io::Read,
     sync::{
         Arc,
-        mpsc::{Receiver, Sender},
+        mpsc::{Receiver, Sender, SyncSender},
     },
 };
 
@@ -22,6 +22,7 @@ pub struct Chip8 {
     pub og_behaviour: bool,    // Toggle to emulate quirks of original hardware
     pub delay_timer: u8,
     pub sound_timer: u8,
+    pub frame_count: u128,
 }
 
 impl Chip8 {
@@ -37,6 +38,7 @@ impl Chip8 {
             og_behaviour: og,        // Set based on user choice
             delay_timer: 0,
             sound_timer: 0,
+            frame_count: 0,
         };
 
         new_cpu.load_font();
@@ -111,7 +113,7 @@ impl Chip8 {
     pub fn cycle(
         &mut self,
         timer: Arc<ChipTimer>,
-        display_tx: &Sender<DisplayArray>,
+        display_tx: &SyncSender<DisplayArray>,
         keypad_rx: &Receiver<KeypadArray>,
     ) {
         // Update keypad if necessary
@@ -135,7 +137,6 @@ impl Chip8 {
 
         self.pcounter += 2; // Increment program counter
 
-
         // --- Decoding ----------------------------------------------------
         // When fetching an opcode like 0x6A02, it comes as a raw, packed 16-bit chunk of binary
         // data. The CPU cannot simply execute it as-is, and instead must route different pieces
@@ -152,7 +153,6 @@ impl Chip8 {
         let nn: u8 = (opcode & 0x00FF) as u8; // Immediate byte
         let nnn: u16 = opcode & 0x0FFF; // Memory address
 
-
         // --- Executing ---------------------------------------------------
         // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
         // so we can use n or nn to identify instructions in the same group
@@ -166,7 +166,7 @@ impl Chip8 {
                     0xE0 => {
                         // 00E0: Clear the screen
                         self.display.fill(false);
-                        display_tx.send(self.display);
+                        //display_tx.try_send(self.display);
                     }
 
                     0xEE => {
@@ -423,7 +423,7 @@ impl Chip8 {
                     self.registers[15] = 0;
                 }
 
-                display_tx.send(self.display);
+                //display_tx.try_send(self.display);
             }
 
             // Keypad checks
@@ -549,6 +549,9 @@ impl Chip8 {
 
             _ => unknown_opcode(opcode),
         };
+
+        // Update frame each cycle
+        display_tx.try_send(self.display);
     }
 
     //fn tick_timers(&mut self) {
@@ -560,7 +563,6 @@ impl Chip8 {
     //    }
     //}
 }
-
 
 fn unknown_opcode(oc: u16) -> ! {
     panic!("Unimplemented: {:#06X}", oc);
