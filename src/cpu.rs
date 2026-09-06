@@ -167,9 +167,7 @@ impl Chip8 {
                         // 00E0: Clear the screen
                         self.display.fill(false);
 
-                        if let Ok(mut lock) = cycle_framebuffer.lock() {
-                            *lock = self.display;
-                        }
+                        update_framebuffer(cycle_framebuffer, &self.display);
                     }
 
                     0xEE => {
@@ -426,9 +424,7 @@ impl Chip8 {
                     self.registers[15] = 0;
                 }
 
-                        if let Ok(mut lock) = cycle_framebuffer.lock() {
-                            *lock = self.display;
-                        }
+                update_framebuffer(cycle_framebuffer, &self.display);
             }
 
             // Keypad checks
@@ -554,19 +550,13 @@ impl Chip8 {
 
             _ => unknown_opcode(opcode),
         };
-
-        // Update frame each cycle
-                //display_tx.try_send(self.display);
     }
+}
 
-    //fn tick_timers(&mut self) {
-    //    if self.delay_timer > 0 {
-    //        self.delay_timer -= 1;
-    //    }
-    //    if self.sound_timer > 0 {
-    //        self.sound_timer -= 1;
-    //    }
-    //}
+fn update_framebuffer(cycle_framebuffer: &Arc<Mutex<DisplayArray>>, display: &DisplayArray) {
+    if let Ok(mut lock) = cycle_framebuffer.lock() {
+        *lock = *display;
+    }
 }
 
 fn unknown_opcode(oc: u16) -> ! {

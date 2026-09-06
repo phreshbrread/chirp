@@ -73,7 +73,7 @@ fn main() {
     chip8.load_rom(&rom_str);
 
     // Set up channels
-    let (mut keypad_tx, keypad_rx) = mpsc::channel();
+    let (keypad_tx, keypad_rx) = mpsc::channel();
 
     // Initialize global timer handle
     let timer_handle = Arc::new(ChipTimer::new());
@@ -117,9 +117,6 @@ fn main() {
         }
     });
 
-    // Set screen to blank
-    let mut screen = [false; CHIP8_DISPLAY_SIZE];
-
     // Main window loop
     while !rl.window_should_close() {
         // We assign the variable d to represent the active drawing context
@@ -135,7 +132,6 @@ fn main() {
         d.clear_background(Color::BLACK);
 
         // Only update display array if it changes
-        // TODO
         let screen = { *shared_framebuffer.lock().unwrap() };
 
         for h in 0..32 {
