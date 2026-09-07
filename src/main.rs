@@ -100,6 +100,8 @@ fn main() {
     // ------------------------------------------------
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
+    audio_handle.set_audio_stream_buffer_size_default(4096);
+
     let beep = audio_handle
         .new_sound("assets/beep.wav")
         .expect("Failed to load beep sound file");
@@ -125,15 +127,16 @@ fn main() {
         // Send input first
         keypad_tx.send(poll_input(&d)).unwrap();
 
-        // TODO: Fix choppy audio
         if timer_handle.should_beep() {
             beep.play();
         }
+
         d.clear_background(Color::BLACK);
 
         // Only update display array if it changes
         let screen = { *shared_framebuffer.lock().unwrap() };
 
+        // Draw pixels row by row
         for h in 0..32 {
             // Height
             for w in 0..64 {
