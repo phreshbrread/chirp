@@ -8,6 +8,7 @@ use std::{
 };
 
 use crate::chip_timer::ChipTimer;
+use crate::execute::*;
 use chirp::*;
 
 #[derive(Debug)]
@@ -25,13 +26,13 @@ pub struct Chip8 {
     pub frame_count: u128,
 }
 
-struct DecodedOpcode {
-    n1: u8,
-    x: usize,
-    y: usize,
-    n: u8,
-    nn: u8,
-    nnn: u16,
+pub struct DecodedOpcode {
+    pub n1: u8,
+    pub x: usize,
+    pub y: usize,
+    pub n: u8,
+    pub nn: u8,
+    pub nnn: u16,
 }
 
 fn decode_opcode(opcode: u16) -> DecodedOpcode {
@@ -174,397 +175,387 @@ impl Chip8 {
         // Groups using nn: 0x0, E, and F
         // -----------------------------------------------------------------
 
-        match decoded.n1 {
-            0x0 => {
-                match decoded.nn {
-                    0xE0 => {
-                        // 00E0: Clear the screen
-                        self.display.fill(false);
+        let instruction = get_instruction(decoded, self.og_behaviour);
 
-                        update_framebuffer(cycle_framebuffer, &self.display);
-                    }
+        match instruction.unwrap() {
+            Chip8Instruction::_00E0 => {
+                // 00E0: Clear the screen
+                self.display.fill(false);
 
-                    0xEE => {
-                        // 00EE: Set program counter to the last address on the stack,
-                        // then pop said address
-                        self.pcounter = self.stack.pop().expect("Failed to return from subroutine");
-                    }
-                    _ => unknown_opcode(opcode),
-                }
+                update_framebuffer(cycle_framebuffer, &self.display);
+            },
+            Chip8Instruction::_00EE => {
+                // 00EE: Set program counter to the last address on the stack,
+                // then pop said address
+                self.pcounter = self.stack.pop().expect("Failed to return from subroutine");
             }
-
-            0x1 => {
+            Chip8Instruction::_1NNN => {
                 // 1NNN: Jump to nnn
                 self.pcounter = decoded.nnn;
             }
-
-            0x2 => {
+            Chip8Instruction::_2NNN => {
                 // 2NNN: Save / push the current program counter to the stack so we can
                 // return later, then set the program counter to NNN
                 self.stack.push(self.pcounter);
                 self.pcounter = decoded.nnn;
-            }
-
-            0x3 => {
+            },
+            Chip8Instruction::_3XNN => {
                 // 3XNN: Skip next instruction if VX = nn
                 if self.registers[decoded.x] == decoded.nn {
                     self.pcounter += 2;
                 }
-            }
-
-            0x4 => {
+            },
+            Chip8Instruction::_4XNN => {
                 // 4XNN: Skip next instruction if VX != nn
                 if self.registers[decoded.x] != decoded.nn {
                     self.pcounter += 2;
                 }
-            }
-
-            0x5 => {
+            },
+            Chip8Instruction::_5XY0 => {
                 // 5XY0: Skip next instruction if VX and VY are equal
                 if self.registers[decoded.x] == self.registers[decoded.y] {
                     self.pcounter += 2;
                 }
-            }
-
-            0x6 => {
+            },
+            Chip8Instruction::_6XNN => {
                 // 6XNN: Set register VX to value of NN
                 self.registers[decoded.x] = decoded.nn;
-            }
-
-            0x7 => {
+            },
+            Chip8Instruction::_7XNN => {
                 // 7XNN: Add value of NN to VX
                 // We use .wrapping_add() because this instruction on real
                 // hardware wraps around when the value overflows,
                 // otherwise we would crash here.
                 self.registers[decoded.x] = self.registers[decoded.x].wrapping_add(decoded.nn);
-            }
+            },
+            Chip8Instruction::_8XY0 => {
+                // 8XY0 - Set VX to value in VY
+                self.registers[decoded.x] = self.registers[decoded.y];
+            },
+            Chip8Instruction::_8XY1 => {
+                // 8XY1: Set VX to bitwise OR of VX and VY
+                self.registers[decoded.x] =
+                    self.registers[decoded.x] | self.registers[decoded.y];
 
-            // Maths engine
-            0x8 => {
-                match decoded.n {
-                    0x0 => {
-                        // 8XY0 - Set VX to value in VY
-                        self.registers[decoded.x] = self.registers[decoded.y];
-                    }
-
-                    0x1 => {
-                        // 8XY1: Set VX to bitwise OR of VX and VY
-                        self.registers[decoded.x] = self.registers[decoded.x] | self.registers[decoded.y];
-
-                        // Reset VF to preserve original hardware quirk.
-                        // This also occurs in 8XY2 and 8XY3.
-                        if self.og_behaviour {
-                            self.registers[15] = 0;
-                        }
-                    }
-
-                    0x2 => {
-                        // 8XY2: Set VX to bitwise AND of VX and VY
-                        self.registers[decoded.x] = self.registers[decoded.x] & self.registers[decoded.y];
-
-                        if self.og_behaviour {
-                            self.registers[15] = 0;
-                        }
-                    }
-
-                    0x3 => {
-                        // 8XY3: Set VX to bitwise XOR of VX and VY
-                        self.registers[decoded.x] = self.registers[decoded.x] ^ self.registers[decoded.y];
-
-                        if self.og_behaviour {
-                            self.registers[15] = 0;
-                        }
-                    }
-
-                    0x4 => {
-                        // 8XY4: Add value of VY to VX
-                        // If the result is larger than 255, it will overflow VX, if this happens,
-                        // we set the value of register VF to 1, otherwise, set it to 0.
-                        // TODO: Improve code here
-
-                        // First check if the result will overflow
-                        let result: u16 = self.registers[decoded.x] as u16 + self.registers[decoded.y] as u16;
-
-                        // Then we can perform the actual maths on VX
-                        self.registers[decoded.x] = self.registers[decoded.x].wrapping_add(self.registers[decoded.y]);
-
-                        // Finally, set VF accordingly
-                        if result > 255 {
-                            self.registers[15] = 1;
-                        } else {
-                            self.registers[15] = 0;
-                        }
-                    }
-
-                    0x5 => {
-                        // 8XY5: Subtract value of VY from VX
-
-                        // Set VF to 1 if VX >= VY, saving into a temp variable to
-                        // avoid overwriting the register for now
-                        let borrow_flag: u8 = if self.registers[decoded.x] >= self.registers[decoded.y] {
-                            1
-                        } else {
-                            0
-                        };
-
-                        // Save value into temp variable, wrapping result in the case of an
-                        // underflow
-                        let result = self.registers[decoded.x].wrapping_sub(self.registers[decoded.y]);
-
-                        // We can now overwrite the actual registers
-                        self.registers[decoded.x] = result;
-                        self.registers[15] = borrow_flag;
-                    }
-
-                    0x6 => {
-                        // 8XY6: If the least significant bit of VX is 1, set VF
-                        // to 1 (otherwise 0), then divide VX by 2.
-
-                        // Original hardware would put the value of VY into VX first
-                        if self.og_behaviour {
-                            self.registers[decoded.x] = self.registers[decoded.y];
-                        }
-
-                        let tmp_vx = self.registers[decoded.x];
-
-                        // To get the LSB we just mask VX with a bitwise AND 1
-                        let lsb = tmp_vx & 1;
-
-                        self.registers[15] = lsb;
-
-                        // Divide the old value from VX by 2 by shifing the bits one place to the
-                        // right, then store that value in VX
-                        self.registers[decoded.x] = tmp_vx >> 1;
-                    }
-
-                    0x7 => {
-                        // 8XY7: Set VX to result of VY - VX
-                        self.registers[decoded.x] = self.registers[decoded.y].wrapping_sub(self.registers[decoded.x]);
-                    }
-
-                    0xE => {
-                        // 8XYE: Similar to 8XY6, except we get the most significant bit and
-                        // multiply VX by 2 instead.
-
-                        // If the most-significant bit of VX is 1, then VF is set to 1,
-                        // otherwise to 0. Then VX is multiplied by 2.
-
-                        if self.og_behaviour {
-                            self.registers[decoded.x] = self.registers[decoded.y];
-                        }
-
-                        let tmp_vx = self.registers[decoded.x];
-
-                        // To get the most significant bit (MSB), we shift the byte 7 bits to the
-                        // right to isolate the highest value bit.
-                        let msb: u8 = tmp_vx >> 7;
-
-                        // Directly set VF to 1 or 0 depending on MSB of VX
-                        self.registers[15] = msb;
-
-                        // Shifting the bits left by 1 is essentially the same as multiplying the
-                        // value by 2
-                        self.registers[decoded.x] = tmp_vx << 1;
-                    }
-                    _ => unknown_opcode(opcode),
-                };
-            }
-
-            0x9 => {
-                // 9XY0: Skip next instruction if VX and VY are NOT equal.
-                if self.registers[decoded.x] != self.registers[decoded.y] {
-                    self.pcounter += 2;
-                }
-            }
-
-            0xA => {
-                // ANNN: Set value of index register to nnn.
-                self.index_reg = decoded.nnn;
-            }
-
-            0xB => {
-                // BNNN (OG): Jump to NNN + V0
-                // BXNN (Modern): Jump to XNN (NNN) + VX
+                // Reset VF to preserve original hardware quirk.
+                // This also occurs in 8XY2 and 8XY3.
                 if self.og_behaviour {
-                    self.pcounter = decoded.nnn + self.registers[0] as u16;
-                } else {
-                    self.pcounter = decoded.nnn as u16 + self.registers[decoded.x] as u16;
+                    self.registers[15] = 0;
+                }
+            },
+            Chip8Instruction::_8XY2 => {
+                // 8XY2: Set VX to bitwise AND of VX and VY
+                self.registers[decoded.x] =
+                    self.registers[decoded.x] & self.registers[decoded.y];
+
+                if self.og_behaviour {
+                    self.registers[15] = 0;
+                }
+            },
+
+            0x3 => {
+                // 8XY3: Set VX to bitwise XOR of VX and VY
+                self.registers[decoded.x] =
+                    self.registers[decoded.x] ^ self.registers[decoded.y];
+
+                if self.og_behaviour {
+                    self.registers[15] = 0;
                 }
             }
 
-            0xC => {
-                // CXNN: Set VX to random byte AND nn.
-                // First, generate a random number between 0 - 255, then perform a bitwise
-                // AND on it with the value in nn, finally storing the result in VX.
-                let random_byte: u8 = rand::random();
-                self.registers[decoded.x] = random_byte & decoded.nn;
-            }
+            0x4 => {
+                // 8XY4: Add value of VY to VX
+                // If the result is larger than 255, it will overflow VX, if this happens,
+                // we set the value of register VF to 1, otherwise, set it to 0.
+                // TODO: Improve code here
 
-            // Display
-            0xD => {
-                // DXYN: Draw to screen and check collisions.
-                // Apply modulo to wrap sprites around edges if needed.
-                let start_x = self.registers[decoded.x] % 64;
-                let start_y = self.registers[decoded.y] % 32;
-                let height = decoded.n;
-                let mut collision = false;
+                // First check if the result will overflow
+                let result: u16 =
+                    self.registers[decoded.x] as u16 + self.registers[decoded.y] as u16;
 
-                // Vertical loop
-                for i in 0..height {
-                    let sprite_byte: u8 = self.memory[self.index_reg as usize + i as usize];
-                    let row_coord = (start_y + i) % 32;
+                // Then we can perform the actual maths on VX
+                self.registers[decoded.x] =
+                    self.registers[decoded.x].wrapping_add(self.registers[decoded.y]);
 
-                    // Horizontal loop
-                    for j in 0..8 {
-                        let column = (start_x + j) % 64;
-
-                        let isolated_bit = sprite_byte >> (7 - j) & 1;
-                        let display_index: usize = row_coord as usize * 64 + column as usize;
-
-                        if (isolated_bit) == 1 {
-                            if self.display[display_index] == true {
-                                collision = true;
-                                self.display[display_index] = false;
-                            } else {
-                                self.display[display_index] = true;
-                            }
-                        }
-                    }
-                }
-
-                if collision {
+                // Finally, set VF accordingly
+                if result > 255 {
                     self.registers[15] = 1;
                 } else {
                     self.registers[15] = 0;
                 }
-
-                update_framebuffer(cycle_framebuffer, &self.display);
             }
 
-            // Keypad checks
+            0x5 => {
+                // 8XY5: Subtract value of VY from VX
+
+                // Set VF to 1 if VX >= VY, saving into a temp variable to
+                // avoid overwriting the register for now
+                let borrow_flag: u8 =
+                    if self.registers[decoded.x] >= self.registers[decoded.y] {
+                        1
+                    } else {
+                        0
+                    };
+
+                // Save value into temp variable, wrapping result in the case of an
+                // underflow
+                let result =
+                    self.registers[decoded.x].wrapping_sub(self.registers[decoded.y]);
+
+                // We can now overwrite the actual registers
+                self.registers[decoded.x] = result;
+                self.registers[15] = borrow_flag;
+            }
+
+            0x6 => {
+                // 8XY6: If the least significant bit of VX is 1, set VF
+                // to 1 (otherwise 0), then divide VX by 2.
+
+                // Original hardware would put the value of VY into VX first
+                if self.og_behaviour {
+                    self.registers[decoded.x] = self.registers[decoded.y];
+                }
+
+                let tmp_vx = self.registers[decoded.x];
+
+                // To get the LSB we just mask VX with a bitwise AND 1
+                let lsb = tmp_vx & 1;
+
+                self.registers[15] = lsb;
+
+                // Divide the old value from VX by 2 by shifing the bits one place to the
+                // right, then store that value in VX
+                self.registers[decoded.x] = tmp_vx >> 1;
+            }
+
+            0x7 => {
+                // 8XY7: Set VX to result of VY - VX
+                self.registers[decoded.x] =
+                    self.registers[decoded.y].wrapping_sub(self.registers[decoded.x]);
+            }
+
             0xE => {
-                let key: usize = self.registers[decoded.x] as usize;
+                // 8XYE: Similar to 8XY6, except we get the most significant bit and
+                // multiply VX by 2 instead.
 
-                match decoded.nn {
-                    0x9E => {
-                        // EX9A: Skip next instruction if the key with value in VX is pressed
-                        if self.keypad[key] {
-                            self.pcounter += 2;
-                        }
-                    }
+                // If the most-significant bit of VX is 1, then VF is set to 1,
+                // otherwise to 0. Then VX is multiplied by 2.
 
-                    0xA1 => {
-                        // EXA1: Skip the next instruction if key with value in VX is not pressed
-                        if !self.keypad[key] {
-                            self.pcounter += 2;
-                        }
-                    }
+                if self.og_behaviour {
+                    self.registers[decoded.x] = self.registers[decoded.y];
+                }
 
-                    _ => println!("Unknown 0xE group instruction"),
-                };
+                let tmp_vx = self.registers[decoded.x];
+
+                // To get the most significant bit (MSB), we shift the byte 7 bits to the
+                // right to isolate the highest value bit.
+                let msb: u8 = tmp_vx >> 7;
+
+                // Directly set VF to 1 or 0 depending on MSB of VX
+                self.registers[15] = msb;
+
+                // Shifting the bits left by 1 is essentially the same as multiplying the
+                // value by 2
+                self.registers[decoded.x] = tmp_vx << 1;
             }
-
-            // Timers, memory and fonts
-            0xF => {
-                match decoded.nn {
-                    0x07 => {
-                        // FX07: Set VX to value of delay timer
-                        self.registers[decoded.x] = timer.read_dt();
-                    }
-
-                    0x0A => {
-                        // FX0A: Pause execution until key is pressed.
-                        //
-                        // If no key is detected, we simply rewind execution by one step so we keep
-                        // hitting this check, otherwise, we can skip forward a step.
-                        if self.keypad.contains(&true) {
-                            self.pcounter += 2;
-                        } else {
-                            self.pcounter -= 2;
-                        }
-                    }
-
-                    0x15 => {
-                        // FX15: Set delay timer equal to VX
-                        timer.write_dt(self.registers[decoded.x]);
-                    }
-
-                    0x18 => {
-                        // FX18: Set sound timer equal to VX
-                        timer.write_st(self.registers[decoded.x]);
-                    }
-
-                    0x29 => {
-                        // FX29: Set index_reg = location of sprite for digit VX.
-                        //
-                        // Take the 4 lower bits from VX, multiply it by 5 (byte size of font),
-                        // and add to the base address where font data is loaded (0x000).
-
-                        let lb = (self.registers[decoded.x] & 0x000F) as u8; // Get lower 4 bits from VX
-                        let shifted = (lb << 2) + lb;
-
-                        self.index_reg = (shifted + 0x000) as u16;
-                    }
-
-                    0x1E => {
-                        // FX1E: Add the value of index_reg and VX, storing the result in index_reg
-                        self.index_reg = self.index_reg + self.registers[decoded.x] as u16;
-                    }
-
-                    0x33 => {
-                        // FX33: Take the hundreds, tens and ones digits from VX and place them
-                        // in memory locations index_reg, index_reg + 1 and index_reg + 2 respectively
-                        let tmp_vx = self.registers[decoded.x];
-
-                        // The method for digit is as follows:
-                        // Ones - Dividing by 10 leaves the remainder equal to its original last digit
-                        // Tens - Divide by 10 first to remove a decimal place, then get the
-                        // remainder of another division by 10
-                        // Hundreds - Same as tens, but divide by 100 first to remove two decimal
-                        // spots before getting the 10 remainder
-
-                        self.memory[self.index_reg as usize + 2] = tmp_vx % 10; // Ones
-                        self.memory[self.index_reg as usize + 1] = tmp_vx / 10 % 10; // Tens
-                        self.memory[self.index_reg as usize] = tmp_vx / 100 % 10; // Hundreds
-                    }
-
-                    0x55 => {
-                        // FX55: Store registers V0 - VX in memory, starting at index_reg
-                        let start = self.index_reg as usize;
-
-                        // Copy value from registers V0 - VX, starting at the memory
-                        // address of index_reg
-                        self.memory[start..(start + decoded.x + 1)]
-                            .copy_from_slice(&self.registers[..(decoded.x + 1)]);
-
-                        // Early hardware had a quirk where index_reg would be
-                        // incremented by (x + 1) at the end of the copy operation
-                        if self.og_behaviour {
-                            self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
-                        }
-                    }
-
-                    0x65 => {
-                        // FX65: Read registers V0 - VX from memory, starting at index_reg.
-                        //
-                        // Copy x + 1 bytes from RAM into V registers, from V0 - VX.
-                        let count = decoded.x + 1;
-                        let s = self.index_reg as usize;
-
-                        self.registers[..decoded.x + 1].copy_from_slice(&self.memory[s..s + count]);
-
-                        if self.og_behaviour {
-                            self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
-                        }
-                    }
-
-                    _ => unknown_opcode(opcode),
-                };
-            }
-
             _ => unknown_opcode(opcode),
         };
-    }
+
+        0x9 => {
+            // 9XY0: Skip next instruction if VX and VY are NOT equal.
+            if self.registers[decoded.x] != self.registers[decoded.y] {
+                self.pcounter += 2;
+            }
+        }
+
+        0xA => {
+            // ANNN: Set value of index register to nnn.
+            self.index_reg = decoded.nnn;
+        }
+
+        0xB => {
+            // BNNN (OG): Jump to NNN + V0
+            // BXNN (Modern): Jump to XNN (NNN) + VX
+            if self.og_behaviour {
+                self.pcounter = decoded.nnn + self.registers[0] as u16;
+            } else {
+                self.pcounter = decoded.nnn as u16 + self.registers[decoded.x] as u16;
+            }
+        }
+
+        0xC => {
+            // CXNN: Set VX to random byte AND nn.
+            // First, generate a random number between 0 - 255, then perform a bitwise
+            // AND on it with the value in nn, finally storing the result in VX.
+            let random_byte: u8 = rand::random();
+            self.registers[decoded.x] = random_byte & decoded.nn;
+        }
+
+        // Display
+        0xD => {
+            // DXYN: Draw to screen and check collisions.
+            // Apply modulo to wrap sprites around edges if needed.
+            let start_x = self.registers[decoded.x] % 64;
+            let start_y = self.registers[decoded.y] % 32;
+            let height = decoded.n;
+            let mut collision = false;
+
+            // Vertical loop
+            for i in 0..height {
+                let sprite_byte: u8 = self.memory[self.index_reg as usize + i as usize];
+                let row_coord = (start_y + i) % 32;
+
+                // Horizontal loop
+                for j in 0..8 {
+                    let column = (start_x + j) % 64;
+
+                    let isolated_bit = sprite_byte >> (7 - j) & 1;
+                    let display_index: usize = row_coord as usize * 64 + column as usize;
+
+                    if (isolated_bit) == 1 {
+                        if self.display[display_index] == true {
+                            collision = true;
+                            self.display[display_index] = false;
+                        } else {
+                            self.display[display_index] = true;
+                        }
+                    }
+                }
+            }
+
+            if collision {
+                self.registers[15] = 1;
+            } else {
+                self.registers[15] = 0;
+            }
+
+            update_framebuffer(cycle_framebuffer, &self.display);
+        }
+
+        // Keypad checks
+        0xE => {
+            let key: usize = self.registers[decoded.x] as usize;
+
+            match decoded.nn {
+                0x9E => {
+                    // EX9A: Skip next instruction if the key with value in VX is pressed
+                    if self.keypad[key] {
+                        self.pcounter += 2;
+                    }
+                }
+
+                0xA1 => {
+                    // EXA1: Skip the next instruction if key with value in VX is not pressed
+                    if !self.keypad[key] {
+                        self.pcounter += 2;
+                    }
+                }
+
+                _ => println!("Unknown 0xE group instruction"),
+            };
+        }
+
+        // Timers, memory and fonts
+        0xF => {
+            match decoded.nn {
+                0x07 => {
+                    // FX07: Set VX to value of delay timer
+                    self.registers[decoded.x] = timer.read_dt();
+                }
+
+                0x0A => {
+                    // FX0A: Pause execution until key is pressed.
+                    //
+                    // If no key is detected, we simply rewind execution by one step so we keep
+                    // hitting this check, otherwise, we can skip forward a step.
+                    if self.keypad.contains(&true) {
+                        self.pcounter += 2;
+                    } else {
+                        self.pcounter -= 2;
+                    }
+                }
+
+                0x15 => {
+                    // FX15: Set delay timer equal to VX
+                    timer.write_dt(self.registers[decoded.x]);
+                }
+
+                0x18 => {
+                    // FX18: Set sound timer equal to VX
+                    timer.write_st(self.registers[decoded.x]);
+                }
+
+                0x29 => {
+                    // FX29: Set index_reg = location of sprite for digit VX.
+                    //
+                    // Take the 4 lower bits from VX, multiply it by 5 (byte size of font),
+                    // and add to the base address where font data is loaded (0x000).
+
+                    let lb = (self.registers[decoded.x] & 0x000F) as u8; // Get lower 4 bits from VX
+                    let shifted = (lb << 2) + lb;
+
+                    self.index_reg = (shifted + 0x000) as u16;
+                }
+
+                0x1E => {
+                    // FX1E: Add the value of index_reg and VX, storing the result in index_reg
+                    self.index_reg = self.index_reg + self.registers[decoded.x] as u16;
+                }
+
+                0x33 => {
+                    // FX33: Take the hundreds, tens and ones digits from VX and place them
+                    // in memory locations index_reg, index_reg + 1 and index_reg + 2 respectively
+                    let tmp_vx = self.registers[decoded.x];
+
+                    // The method for digit is as follows:
+                    // Ones - Dividing by 10 leaves the remainder equal to its original last digit
+                    // Tens - Divide by 10 first to remove a decimal place, then get the
+                    // remainder of another division by 10
+                    // Hundreds - Same as tens, but divide by 100 first to remove two decimal
+                    // spots before getting the 10 remainder
+
+                    self.memory[self.index_reg as usize + 2] = tmp_vx % 10; // Ones
+                    self.memory[self.index_reg as usize + 1] = tmp_vx / 10 % 10; // Tens
+                    self.memory[self.index_reg as usize] = tmp_vx / 100 % 10; // Hundreds
+                }
+
+                0x55 => {
+                    // FX55: Store registers V0 - VX in memory, starting at index_reg
+                    let start = self.index_reg as usize;
+
+                    // Copy value from registers V0 - VX, starting at the memory
+                    // address of index_reg
+                    self.memory[start..(start + decoded.x + 1)]
+                        .copy_from_slice(&self.registers[..(decoded.x + 1)]);
+
+                    // Early hardware had a quirk where index_reg would be
+                    // incremented by (x + 1) at the end of the copy operation
+                    if self.og_behaviour {
+                        self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
+                    }
+                }
+
+                0x65 => {
+                    // FX65: Read registers V0 - VX from memory, starting at index_reg.
+                    //
+                    // Copy x + 1 bytes from RAM into V registers, from V0 - VX.
+                    let count = decoded.x + 1;
+                    let s = self.index_reg as usize;
+
+                    self.registers[..decoded.x + 1].copy_from_slice(&self.memory[s..s + count]);
+
+                    if self.og_behaviour {
+                        self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
+                    }
+                }
+
+                _ => unknown_opcode(opcode),
+            };
+        }
+
+        _ => unknown_opcode(opcode),
+    };
+}
 }
 
 fn update_framebuffer(cycle_framebuffer: &Arc<Mutex<DisplayArray>>, display: &DisplayArray) {

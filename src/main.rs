@@ -9,6 +9,7 @@ use std::{
 // Include cpu.rs and timers.rs
 mod chip_timer;
 mod cpu;
+mod execute;
 
 use chip_timer::ChipTimer;
 use chirp::*;
