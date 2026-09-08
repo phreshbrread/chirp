@@ -25,6 +25,26 @@ pub struct Chip8 {
     pub frame_count: u128,
 }
 
+struct DecodedOpcode {
+    n1: u8,
+    x: usize,
+    y: usize,
+    n: u8,
+    nn: u8,
+    nnn: u16,
+}
+
+fn decode_opcode(opcode: u16) -> DecodedOpcode {
+    return DecodedOpcode {
+        n1: ((opcode & 0xF000) >> 12) as u8, // Primary opcode group identifier
+        x: ((opcode & 0x0F00) >> 8) as usize, // Target register index
+        y: ((opcode & 0x00F0) >> 4) as usize, // Secondary source register index
+        n: (opcode & 0x000F) as u8,          // Immediate nibble
+        nn: (opcode & 0x00FF) as u8,         // Immediate byte
+        nnn: opcode & 0x0FFF,                // Memory address
+    };
+}
+
 impl Chip8 {
     pub fn new(og: bool) -> Self {
         let mut new_cpu = Self {
@@ -145,13 +165,7 @@ impl Chip8 {
         // (called nibbles, as they are half the size of a byte), and then recombining those
         // nibbles to form the system's core variables: X, Y, N, NN, and NNN.
         // -----------------------------------------------------------------
-
-        let n1: u8 = ((opcode & 0xF000) >> 12) as u8; // Primary opcode group identifier
-        let x: usize = ((opcode & 0x0F00) >> 8) as usize; // Target register index
-        let y: usize = ((opcode & 0x00F0) >> 4) as usize; // Secondary source register index
-        let n: u8 = (opcode & 0x000F) as u8; // Immediate nibble
-        let nn: u8 = (opcode & 0x00FF) as u8; // Immediate byte
-        let nnn: u16 = opcode & 0x0FFF; // Memory address
+        let decoded = decode_opcode(opcode);
 
         // --- Executing ---------------------------------------------------
         // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
@@ -160,9 +174,9 @@ impl Chip8 {
         // Groups using nn: 0x0, E, and F
         // -----------------------------------------------------------------
 
-        match n1 {
+        match decoded.n1 {
             0x0 => {
-                match nn {
+                match decoded.nn {
                     0xE0 => {
                         // 00E0: Clear the screen
                         self.display.fill(false);
@@ -181,40 +195,40 @@ impl Chip8 {
 
             0x1 => {
                 // 1NNN: Jump to nnn
-                self.pcounter = nnn;
+                self.pcounter = decoded.nnn;
             }
 
             0x2 => {
                 // 2NNN: Save / push the current program counter to the stack so we can
                 // return later, then set the program counter to NNN
                 self.stack.push(self.pcounter);
-                self.pcounter = nnn;
+                self.pcounter = decoded.nnn;
             }
 
             0x3 => {
                 // 3XNN: Skip next instruction if VX = nn
-                if self.registers[x] == nn {
+                if self.registers[decoded.x] == decoded.nn {
                     self.pcounter += 2;
                 }
             }
 
             0x4 => {
                 // 4XNN: Skip next instruction if VX != nn
-                if self.registers[x] != nn {
+                if self.registers[decoded.x] != decoded.nn {
                     self.pcounter += 2;
                 }
             }
 
             0x5 => {
                 // 5XY0: Skip next instruction if VX and VY are equal
-                if self.registers[x] == self.registers[y] {
+                if self.registers[decoded.x] == self.registers[decoded.y] {
                     self.pcounter += 2;
                 }
             }
 
             0x6 => {
                 // 6XNN: Set register VX to value of NN
-                self.registers[x] = nn;
+                self.registers[decoded.x] = decoded.nn;
             }
 
             0x7 => {
@@ -222,20 +236,20 @@ impl Chip8 {
                 // We use .wrapping_add() because this instruction on real
                 // hardware wraps around when the value overflows,
                 // otherwise we would crash here.
-                self.registers[x] = self.registers[x].wrapping_add(nn);
+                self.registers[decoded.x] = self.registers[decoded.x].wrapping_add(decoded.nn);
             }
 
             // Maths engine
             0x8 => {
-                match n {
+                match decoded.n {
                     0x0 => {
                         // 8XY0 - Set VX to value in VY
-                        self.registers[x] = self.registers[y];
+                        self.registers[decoded.x] = self.registers[decoded.y];
                     }
 
                     0x1 => {
                         // 8XY1: Set VX to bitwise OR of VX and VY
-                        self.registers[x] = self.registers[x] | self.registers[y];
+                        self.registers[decoded.x] = self.registers[decoded.x] | self.registers[decoded.y];
 
                         // Reset VF to preserve original hardware quirk.
                         // This also occurs in 8XY2 and 8XY3.
@@ -246,7 +260,7 @@ impl Chip8 {
 
                     0x2 => {
                         // 8XY2: Set VX to bitwise AND of VX and VY
-                        self.registers[x] = self.registers[x] & self.registers[y];
+                        self.registers[decoded.x] = self.registers[decoded.x] & self.registers[decoded.y];
 
                         if self.og_behaviour {
                             self.registers[15] = 0;
@@ -255,7 +269,7 @@ impl Chip8 {
 
                     0x3 => {
                         // 8XY3: Set VX to bitwise XOR of VX and VY
-                        self.registers[x] = self.registers[x] ^ self.registers[y];
+                        self.registers[decoded.x] = self.registers[decoded.x] ^ self.registers[decoded.y];
 
                         if self.og_behaviour {
                             self.registers[15] = 0;
@@ -269,10 +283,10 @@ impl Chip8 {
                         // TODO: Improve code here
 
                         // First check if the result will overflow
-                        let result: u16 = self.registers[x] as u16 + self.registers[y] as u16;
+                        let result: u16 = self.registers[decoded.x] as u16 + self.registers[decoded.y] as u16;
 
                         // Then we can perform the actual maths on VX
-                        self.registers[x] = self.registers[x].wrapping_add(self.registers[y]);
+                        self.registers[decoded.x] = self.registers[decoded.x].wrapping_add(self.registers[decoded.y]);
 
                         // Finally, set VF accordingly
                         if result > 255 {
@@ -287,7 +301,7 @@ impl Chip8 {
 
                         // Set VF to 1 if VX >= VY, saving into a temp variable to
                         // avoid overwriting the register for now
-                        let borrow_flag: u8 = if self.registers[x] >= self.registers[y] {
+                        let borrow_flag: u8 = if self.registers[decoded.x] >= self.registers[decoded.y] {
                             1
                         } else {
                             0
@@ -295,10 +309,10 @@ impl Chip8 {
 
                         // Save value into temp variable, wrapping result in the case of an
                         // underflow
-                        let result = self.registers[x].wrapping_sub(self.registers[y]);
+                        let result = self.registers[decoded.x].wrapping_sub(self.registers[decoded.y]);
 
                         // We can now overwrite the actual registers
-                        self.registers[x] = result;
+                        self.registers[decoded.x] = result;
                         self.registers[15] = borrow_flag;
                     }
 
@@ -308,10 +322,10 @@ impl Chip8 {
 
                         // Original hardware would put the value of VY into VX first
                         if self.og_behaviour {
-                            self.registers[x] = self.registers[y];
+                            self.registers[decoded.x] = self.registers[decoded.y];
                         }
 
-                        let tmp_vx = self.registers[x];
+                        let tmp_vx = self.registers[decoded.x];
 
                         // To get the LSB we just mask VX with a bitwise AND 1
                         let lsb = tmp_vx & 1;
@@ -320,12 +334,12 @@ impl Chip8 {
 
                         // Divide the old value from VX by 2 by shifing the bits one place to the
                         // right, then store that value in VX
-                        self.registers[x] = tmp_vx >> 1;
+                        self.registers[decoded.x] = tmp_vx >> 1;
                     }
 
                     0x7 => {
                         // 8XY7: Set VX to result of VY - VX
-                        self.registers[x] = self.registers[y].wrapping_sub(self.registers[x]);
+                        self.registers[decoded.x] = self.registers[decoded.y].wrapping_sub(self.registers[decoded.x]);
                     }
 
                     0xE => {
@@ -336,10 +350,10 @@ impl Chip8 {
                         // otherwise to 0. Then VX is multiplied by 2.
 
                         if self.og_behaviour {
-                            self.registers[x] = self.registers[y];
+                            self.registers[decoded.x] = self.registers[decoded.y];
                         }
 
-                        let tmp_vx = self.registers[x];
+                        let tmp_vx = self.registers[decoded.x];
 
                         // To get the most significant bit (MSB), we shift the byte 7 bits to the
                         // right to isolate the highest value bit.
@@ -350,7 +364,7 @@ impl Chip8 {
 
                         // Shifting the bits left by 1 is essentially the same as multiplying the
                         // value by 2
-                        self.registers[x] = tmp_vx << 1;
+                        self.registers[decoded.x] = tmp_vx << 1;
                     }
                     _ => unknown_opcode(opcode),
                 };
@@ -358,23 +372,23 @@ impl Chip8 {
 
             0x9 => {
                 // 9XY0: Skip next instruction if VX and VY are NOT equal.
-                if self.registers[x] != self.registers[y] {
+                if self.registers[decoded.x] != self.registers[decoded.y] {
                     self.pcounter += 2;
                 }
             }
 
             0xA => {
                 // ANNN: Set value of index register to nnn.
-                self.index_reg = nnn;
+                self.index_reg = decoded.nnn;
             }
 
             0xB => {
                 // BNNN (OG): Jump to NNN + V0
                 // BXNN (Modern): Jump to XNN (NNN) + VX
                 if self.og_behaviour {
-                    self.pcounter = nnn + self.registers[0] as u16;
+                    self.pcounter = decoded.nnn + self.registers[0] as u16;
                 } else {
-                    self.pcounter = nnn as u16 + self.registers[x] as u16;
+                    self.pcounter = decoded.nnn as u16 + self.registers[decoded.x] as u16;
                 }
             }
 
@@ -383,16 +397,16 @@ impl Chip8 {
                 // First, generate a random number between 0 - 255, then perform a bitwise
                 // AND on it with the value in nn, finally storing the result in VX.
                 let random_byte: u8 = rand::random();
-                self.registers[x] = random_byte & nn;
+                self.registers[decoded.x] = random_byte & decoded.nn;
             }
 
             // Display
             0xD => {
                 // DXYN: Draw to screen and check collisions.
                 // Apply modulo to wrap sprites around edges if needed.
-                let start_x = self.registers[x] % 64;
-                let start_y = self.registers[y] % 32;
-                let height = n;
+                let start_x = self.registers[decoded.x] % 64;
+                let start_y = self.registers[decoded.y] % 32;
+                let height = decoded.n;
                 let mut collision = false;
 
                 // Vertical loop
@@ -429,9 +443,9 @@ impl Chip8 {
 
             // Keypad checks
             0xE => {
-                let key: usize = self.registers[x] as usize;
+                let key: usize = self.registers[decoded.x] as usize;
 
-                match nn {
+                match decoded.nn {
                     0x9E => {
                         // EX9A: Skip next instruction if the key with value in VX is pressed
                         if self.keypad[key] {
@@ -452,10 +466,10 @@ impl Chip8 {
 
             // Timers, memory and fonts
             0xF => {
-                match nn {
+                match decoded.nn {
                     0x07 => {
                         // FX07: Set VX to value of delay timer
-                        self.registers[x] = timer.read_dt();
+                        self.registers[decoded.x] = timer.read_dt();
                     }
 
                     0x0A => {
@@ -472,12 +486,12 @@ impl Chip8 {
 
                     0x15 => {
                         // FX15: Set delay timer equal to VX
-                        timer.write_dt(self.registers[x]);
+                        timer.write_dt(self.registers[decoded.x]);
                     }
 
                     0x18 => {
                         // FX18: Set sound timer equal to VX
-                        timer.write_st(self.registers[x]);
+                        timer.write_st(self.registers[decoded.x]);
                     }
 
                     0x29 => {
@@ -486,7 +500,7 @@ impl Chip8 {
                         // Take the 4 lower bits from VX, multiply it by 5 (byte size of font),
                         // and add to the base address where font data is loaded (0x000).
 
-                        let lb = (self.registers[x] & 0x000F) as u8; // Get lower 4 bits from VX
+                        let lb = (self.registers[decoded.x] & 0x000F) as u8; // Get lower 4 bits from VX
                         let shifted = (lb << 2) + lb;
 
                         self.index_reg = (shifted + 0x000) as u16;
@@ -494,13 +508,13 @@ impl Chip8 {
 
                     0x1E => {
                         // FX1E: Add the value of index_reg and VX, storing the result in index_reg
-                        self.index_reg = self.index_reg + self.registers[x] as u16;
+                        self.index_reg = self.index_reg + self.registers[decoded.x] as u16;
                     }
 
                     0x33 => {
                         // FX33: Take the hundreds, tens and ones digits from VX and place them
                         // in memory locations index_reg, index_reg + 1 and index_reg + 2 respectively
-                        let tmp_vx = self.registers[x];
+                        let tmp_vx = self.registers[decoded.x];
 
                         // The method for digit is as follows:
                         // Ones - Dividing by 10 leaves the remainder equal to its original last digit
@@ -520,13 +534,13 @@ impl Chip8 {
 
                         // Copy value from registers V0 - VX, starting at the memory
                         // address of index_reg
-                        self.memory[start..(start + x + 1)]
-                            .copy_from_slice(&self.registers[..(x + 1)]);
+                        self.memory[start..(start + decoded.x + 1)]
+                            .copy_from_slice(&self.registers[..(decoded.x + 1)]);
 
                         // Early hardware had a quirk where index_reg would be
                         // incremented by (x + 1) at the end of the copy operation
                         if self.og_behaviour {
-                            self.index_reg = self.index_reg.wrapping_add((x as u16) + 1);
+                            self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
                         }
                     }
 
@@ -534,13 +548,13 @@ impl Chip8 {
                         // FX65: Read registers V0 - VX from memory, starting at index_reg.
                         //
                         // Copy x + 1 bytes from RAM into V registers, from V0 - VX.
-                        let count = x + 1;
+                        let count = decoded.x + 1;
                         let s = self.index_reg as usize;
 
-                        self.registers[..x + 1].copy_from_slice(&self.memory[s..s + count]);
+                        self.registers[..decoded.x + 1].copy_from_slice(&self.memory[s..s + count]);
 
                         if self.og_behaviour {
-                            self.index_reg = self.index_reg.wrapping_add((x as u16) + 1);
+                            self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
                         }
                     }
 
