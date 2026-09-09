@@ -41,11 +41,11 @@ pub struct Flag<'a> {
     pub short: Box<str>,
     pub long: Box<str>,
     pub desc: Box<str>,
-    pub active: &'a bool,
+    pub active: &'a mut bool,
 }
 
 impl<'a> Flag<'a> {
-    pub fn new(s: &str, l: &str, d: &str, a: &'a bool) -> Self {
+    pub fn new(s: &str, l: &str, d: &str, a: &'a mut bool) -> Self {
         return Self {
             short: s.into(),
             long: l.into(),

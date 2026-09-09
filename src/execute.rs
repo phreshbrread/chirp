@@ -23,7 +23,7 @@ pub enum Chip8Instruction {
     _ANNN,
     _BNNN,
     _BXNN,
-    _CNNN,
+    _CXNN,
     _DXYN,
     _EX9A,
     _EXA1,
@@ -38,7 +38,10 @@ pub enum Chip8Instruction {
     _FX65,
 }
 
-pub fn get_instruction(decoded: DecodedOpcode, og_behaviour: bool) -> Result<Chip8Instruction, ()> {
+pub fn get_instruction(
+    decoded: &DecodedOpcode,
+    og_behaviour: bool,
+) -> Result<Chip8Instruction, ()> {
     match decoded.n1 {
         0x0 => match decoded.nn {
             0xE0 => return Ok(Chip8Instruction::_00E0),
@@ -68,11 +71,12 @@ pub fn get_instruction(decoded: DecodedOpcode, og_behaviour: bool) -> Result<Chi
         0x9 => return Ok(Chip8Instruction::_9XY0),
         0xA => return Ok(Chip8Instruction::_ANNN),
         0xB => {
-            // TODO: Behaviour check
-            // BNNN (OG): Jump to NNN + V0
-            // BXNN (Modern): Jump to XNN (NNN) + VX
+            if og_behaviour {
+                return Ok(Chip8Instruction::_BNNN);
+            }
+            return Ok(Chip8Instruction::_BXNN);
         }
-        0xC => return Ok(Chip8Instruction::_CNNN),
+        0xC => return Ok(Chip8Instruction::_CXNN),
         0xD => return Ok(Chip8Instruction::_DXYN),
         0xE => {
             // Keypad checks
@@ -99,5 +103,4 @@ pub fn get_instruction(decoded: DecodedOpcode, og_behaviour: bool) -> Result<Chi
         }
         _ => return Err(()),
     };
-    return Err(());
 }

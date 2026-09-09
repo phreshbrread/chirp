@@ -23,7 +23,8 @@ use chirp::*;
 
 fn main() {
     // --- Flags ------------------------------------------------
-    let original_behaviour = false;
+    let mut original_behaviour = false;
+    let mut show_fps = false;
     let rom_str: Box<str>;
 
     let shared_framebuffer: Arc<Mutex<DisplayArray>> =
@@ -31,12 +32,20 @@ fn main() {
 
     // Handle argument stuff in its own scope so it can all be freed when we're done
     {
-        let mut flags: Vec<Flag> = vec![Flag::new(
-            "-o",
-            "--original",
-            "Emulates original hardware behaviour",
-            &original_behaviour,
-        )];
+        let mut flags: Vec<Flag> = vec![
+            Flag::new(
+                "-o",
+                "--original",
+                "Emulates original hardware behaviour",
+                &mut original_behaviour,
+            ),
+            Flag::new(
+                "-f",
+                "--show-fps",
+                "Display the current framerate",
+                &mut show_fps,
+            ),
+        ];
 
         // Ensure arg is given
         let mut argv: Vec<String> = env::args().collect();
@@ -52,7 +61,7 @@ fn main() {
         for arg in 1..argc {
             for flag in 0..flags.len() {
                 if *argv[arg] == *flags[flag].short || *argv[arg] == *flags[flag].long {
-                    flags[flag].active = &true;
+                    *flags[flag].active = true;
                     activated_flags += 1;
                 }
             }
@@ -156,6 +165,8 @@ fn main() {
             }
         }
 
-        d.draw_fps(0, 0);
+        if show_fps {
+            d.draw_fps(0, 0);
+        }
     }
 }
