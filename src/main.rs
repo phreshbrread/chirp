@@ -144,7 +144,7 @@ fn main() {
         d.clear_background(Color::BLACK);
 
         // Only update display array if it changes
-        let screen = { *shared_framebuffer.lock().unwrap() };
+        let screen = *shared_framebuffer.lock().unwrap();
 
         // Draw pixels row by row
         for h in 0..32 {

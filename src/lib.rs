@@ -2,7 +2,7 @@ use raylib::{
     RaylibHandle,
     prelude::{KeyboardKey, RaylibDrawHandle},
 };
-use std::process;
+use std::{process, thread, time::{Duration, Instant}};
 
 pub const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
 pub const FONTSET_SIZE: usize = 80; // Fonts only take up 80 bytes
@@ -84,4 +84,21 @@ pub fn show_help(f: Vec<Flag>) -> ! {
     }
 
     process::exit(1);
+}
+
+pub fn drift_accounted_loop<F>(interval: Duration, mut task: F) where F: FnMut() {
+    let mut next_tick = Instant::now();
+
+    loop {
+        next_tick += interval;
+
+        task();
+
+        let now = Instant::now();
+        if now < next_tick {
+            thread::sleep(next_tick - now);
+        } else {
+            next_tick = now;
+        }
+    }
 }
