@@ -25,6 +25,7 @@ fn main() {
     // --- Flags ------------------------------------------------
     let mut original_behaviour = false;
     let mut show_fps = false;
+    let mut esc_quits = false;
     let rom_str: Box<str>;
 
     let shared_framebuffer: Arc<Mutex<DisplayArray>> =
@@ -45,6 +46,7 @@ fn main() {
                 "Display the current framerate",
                 &mut show_fps,
             ),
+            Flag::new("-e", "--esc-quit", "Enable ESC to quit", &mut esc_quits),
         ];
 
         // Ensure arg is given
@@ -106,7 +108,9 @@ fn main() {
     rl.set_target_fps(60);
 
     // Disable ESC to quit
-    rl.set_exit_key(None);
+    if !esc_quits {
+        rl.set_exit_key(None);
+    }
     // ------------------------------------------------
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
