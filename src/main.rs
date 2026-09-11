@@ -100,7 +100,7 @@ fn main() {
         });
     });
 
-    // --- Raylib init --------------------------------
+    // Initialize window
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
         .title(format!("Chirp | {}", rom_str).as_str())
@@ -109,9 +109,8 @@ fn main() {
 
     // Disable ESC to quit
     if !esc_quits {
-        rl.set_exit_key(None);
+    rl.set_exit_key(None);
     }
-    // ------------------------------------------------
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
     audio_handle.set_audio_stream_buffer_size_default(4096);
