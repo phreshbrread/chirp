@@ -104,6 +104,9 @@ fn main() {
         .title(format!("Chirp | {}", rom_str).as_str())
         .build();
     rl.set_target_fps(60);
+
+    // Disable ESC to quit
+    rl.set_exit_key(None);
     // ------------------------------------------------
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
