@@ -93,12 +93,9 @@ fn main() {
         // Timer updates at a fixed 60Hz
         let interval = Duration::from_secs(1) / 60;
 
-        loop {
+        precise_interval_loop(interval, || {
             timer_clone.tick();
-
-            // TODO: Handle drift
-            thread::sleep(interval);
-        }
+        });
     });
 
     // --- Raylib init --------------------------------
@@ -121,12 +118,9 @@ fn main() {
     let _cycle_thread = thread::spawn(move || {
         let interval = Duration::from_secs(1) / 500;
 
-        loop {
+        precise_interval_loop(interval, || {
             chip8.cycle(&timer_clone, &cycle_framebuffer, &keypad_rx);
-
-            // TODO: Account for drift
-            thread::sleep(interval);
-        }
+        });
     });
 
     // Main window loop
