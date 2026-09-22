@@ -24,15 +24,19 @@ struct Args {
     //#[arg(short, long)]
     //system: Option<String>,
 
+    /// Emulate original hardware behaviour
     #[arg(short, long)]
     original_behaviour: bool,
 
+    /// Display current framerate
     #[arg(short = 'f', long)]
     show_fps: bool,
 
+    /// Enable using the ESC key to exit
     #[arg(short, long)]
     esc_quits: bool,
 
+    /// Path to a CHIP-8 ROM file
     rom_path: PathBuf,
 }
 
