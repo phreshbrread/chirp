@@ -171,15 +171,10 @@ impl Chip8 {
         // Increment program counter
         self.pcounter += 2;
 
+        // Get next decoded opcode
         let decoded = decode_opcode(opcode);
 
-        // --- Executing ---------------------------------------------------
-        // Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
-        // so we can use n or nn to identify instructions in the same group
-        // Groups using n: 0x8 and D
-        // Groups using nn: 0x0, E, and F
-        // -----------------------------------------------------------------
-
+        // Get next instruction from decoded opcode
         let instruction = match get_instruction(&decoded, self.og_behaviour) {
             Err(_) => {
                 println!("\nFatal error: unknown instruction");
@@ -243,7 +238,6 @@ impl Chip8 {
             Chip8Instruction::_8XY0 => {
                 // 8XY0 - Set VX to value in VY
                 self.registers[decoded.x] = self.registers[decoded.y];
-
             }
             Chip8Instruction::_8XY1 => {
                 // 8XY1: Set VX to bitwise OR of VX and VY

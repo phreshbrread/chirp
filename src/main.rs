@@ -1,7 +1,7 @@
 use raylib::prelude::*;
 use std::{
     env,
-    sync::{Arc, Mutex, RwLock, mpsc},
+    sync::{Arc, RwLock, mpsc},
     thread,
     time::Duration,
 };
@@ -28,7 +28,6 @@ fn main() {
     let mut esc_quits = false;
     let rom_str: Box<str>;
 
-    //let shared_framebuffer = Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
     let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
 
     // Handle argument stuff in its own scope so it can all be freed when we're done

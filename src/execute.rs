@@ -1,3 +1,10 @@
+// --- Executing ---------------------------------------------------
+// Opcodes are grouped by their first nibble (n1). Some opcodes share the same n1 value,
+// so we can use n or nn to identify instructions in the same group
+// Groups using n: 0x8 and D
+// Groups using nn: 0x0, E, and F
+// -----------------------------------------------------------------
+
 use crate::cpu::DecodedOpcode;
 
 pub enum Chip8Instruction {
