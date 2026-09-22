@@ -1,10 +1,8 @@
 use raylib::prelude::*;
 use std::{
-    env,
-    sync::{Arc, RwLock, mpsc},
-    thread,
-    time::Duration,
+   path::PathBuf, sync::{Arc, RwLock, mpsc}, thread, time::Duration
 };
+use clap::Parser;
 
 // Include cpu.rs and timers.rs
 mod chip_timer;
@@ -21,67 +19,34 @@ use chirp::*;
 //   - https://wiki.xxiivv.com/site/chip8.html
 //   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
 
+#[derive(Parser, Debug)]
+struct Args {
+    //#[arg(short, long)]
+    //system: Option<String>,
+
+    #[arg(short, long)]
+    original_behaviour: bool,
+
+    #[arg(short = 'f', long)]
+    show_fps: bool,
+
+    #[arg(short, long)]
+    esc_quits: bool,
+
+    rom_path: PathBuf,
+}
+
 fn main() {
-    // --- Flags ------------------------------------------------
-    let mut original_behaviour = false;
-    let mut show_fps = false;
-    let mut esc_quits = false;
-    let rom_str: Box<str>;
+    let args = Args::parse();
+    dbg!(&args);
 
     let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
 
-    // Handle argument stuff in its own scope so it can all be freed when we're done
-    {
-        let mut flags: Vec<Flag> = vec![
-            Flag::new(
-                "-o",
-                "--original",
-                "Emulates original hardware behaviour",
-                &mut original_behaviour,
-            ),
-            Flag::new(
-                "-f",
-                "--show-fps",
-                "Display the current framerate",
-                &mut show_fps,
-            ),
-            Flag::new("-e", "--esc-quit", "Enable ESC to quit", &mut esc_quits),
-        ];
-
-        // Ensure arg is given
-        let mut argv: Vec<String> = env::args().collect();
-        let argc = argv.len();
-
-        // First argument is always binary path
-        if argc < 2 {
-            show_help(flags);
-        }
-
-        // Iterate through args and match to corresponding flag
-        let mut activated_flags = 0;
-        for arg in 1..argc {
-            for flag in 0..flags.len() {
-                if *argv[arg] == *flags[flag].short || *argv[arg] == *flags[flag].long {
-                    *flags[flag].active = true;
-                    activated_flags += 1;
-                }
-            }
-        }
-
-        if activated_flags != (argc - 2) {
-            show_help(flags);
-        }
-
-        rom_str = argv.pop().unwrap().into_boxed_str();
-    }
-
-    // ----------------------------------------------------------
-
-    let mut chip8: cpu::Chip8 = cpu::Chip8::new(original_behaviour);
+    let mut chip8: cpu::Chip8 = cpu::Chip8::new(args.original_behaviour);
     println!("Initialised CPU");
 
     // Attempt to load ROM
-    chip8.load_rom(&rom_str);
+    chip8.load_rom(&args.rom_path);
 
     // Set up channels
     let (keypad_tx, keypad_rx) = mpsc::channel();
@@ -99,15 +64,17 @@ fn main() {
         });
     });
 
+    let window_title = format!("Chirp | {}", args.rom_path.to_str().unwrap());
+
     // Initialize window
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
-        .title(format!("Chirp | {}", rom_str).as_str())
+        .title(window_title.as_str())
         .build();
     rl.set_target_fps(60);
 
     // Disable ESC to quit
-    if !esc_quits {
+    if !args.esc_quits {
         rl.set_exit_key(None);
     }
 
@@ -170,7 +137,7 @@ fn main() {
             }
         }
 
-        if show_fps {
+        if args.show_fps {
             d.draw_fps(0, 0);
         }
     }

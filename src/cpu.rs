@@ -105,35 +105,35 @@ impl Chip8 {
         println!("Loaded font set");
     }
 
-    pub fn load_rom(&mut self, rp: &str) {
+    pub fn load_rom(&mut self, path: &std::path::PathBuf) {
         let max_rom_size = 4096 - 512;
 
-        let mut rom_file = File::open(rp).unwrap_or_else(|e| {
-            println!("Failed to open ROM file: {}", e);
-            std::process::exit(1);
-        });
+        let rom_file = std::fs::read(path).unwrap();
+        //let mut rom_file = File::open(rp).unwrap_or_else(|e| {
+        //    println!("Failed to open ROM file: {}", e);
+        //    std::process::exit(1);
+        //});
 
         // Read ROM contents into temporary buffer
-        let mut tmp_buf = Vec::new();
-        match rom_file.read_to_end(&mut tmp_buf) {
-            Ok(_) => (),
-            Err(e) => {
-                println!("Error occurred: {:?}", e);
-                std::process::exit(1);
-            }
-        };
+        //match rom_file.read_to_end(&mut tmp_buf) {
+        //    Ok(_) => (),
+        //    Err(e) => {
+        //        println!("Error occurred: {:?}", e);
+        //        std::process::exit(1);
+        //    }
+        //};
 
         // Check ROM size
-        if tmp_buf.len() > max_rom_size {
+        if rom_file.len() > max_rom_size {
             println!("Invalid ROM file: ROM is too large");
             std::process::exit(1);
         }
-        println!("Opened ROM of size {} bytes", tmp_buf.len());
+        println!("Opened ROM of size {} bytes", rom_file.len());
 
         let start_address: usize = START_ADDRESS as usize;
 
         // tmp_buf.iter().enumerate() returns a tuple - index and the byte being read
-        for (i, &byte) in tmp_buf.iter().enumerate() {
+        for (i, &byte) in rom_file.iter().enumerate() {
             // Starting from 0x200, replace each byte in Chip-8
             // memory with the corresponding byte from the ROM
             self.memory[start_address + i] = byte;
