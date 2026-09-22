@@ -12,7 +12,6 @@ mod execute;
 
 use chip_timer::ChipTimer;
 use chirp::*;
-use cli_args::parse_cli_args;
 
 // Resources:
 //   - https://austinmorlan.com/posts/chip8_emulator/
@@ -22,13 +21,12 @@ use cli_args::parse_cli_args;
 //   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
 
 fn main() {
-    let args = parse_cli_args();
+    let args = cli_args::parse_cli_args();
     dbg!(&args);
 
+    // Initialize chip system & framebuffer
+    let mut chip8 = cpu::Chip8::new(args.original_behaviour);
     let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
-
-    let mut chip8: cpu::Chip8 = cpu::Chip8::new(args.original_behaviour);
-    println!("Initialised CPU");
 
     // Attempt to load ROM
     chip8.load_rom(&args.rom_path);
@@ -49,9 +47,8 @@ fn main() {
         });
     });
 
-    let window_title = format!("Chirp | {}", args.rom_path.to_str().unwrap());
-
     // Initialize window
+    let window_title = format!("Chirp | {}", args.rom_path.to_str().unwrap());
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_W, SCREEN_H)
         .title(window_title.as_str())
@@ -63,6 +60,7 @@ fn main() {
         rl.set_exit_key(None);
     }
 
+    // Initialize raylib audio handle
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
     audio_handle.set_audio_stream_buffer_size_default(4096);
 
@@ -85,23 +83,23 @@ fn main() {
 
     // Main window loop
     while !rl.window_should_close() {
-        // We assign the variable d to represent the active drawing context
-        let mut d = rl.begin_drawing(&thread);
-
-        // Send input first
-        keypad_tx.send(poll_input(&d)).unwrap();
+        // Send input before rendering anything.
+        keypad_tx.send(poll_input_new(&rl)).unwrap();
 
         if timer_handle.should_beep() {
             beep.play();
         }
 
-        d.clear_background(Color::BLACK);
+        // Only update screen array if the framebuffer changes.
+        if let Ok(new_screen) = shared_framebuffer.try_read() {
+            screen = *new_screen;
+        }
 
-        // Only update display array if it changes
-        screen = match shared_framebuffer.try_read() {
-            Ok(o) => *o,
-            Err(_) => screen,
-        };
+        // Begin drawing after updating screen.
+        // We assign the variable d to represent the active drawing context.
+        let mut d = rl.begin_drawing(&thread);
+
+        d.clear_background(Color::BLACK);
 
         // Draw pixels row by row
         for h in 0..32 {

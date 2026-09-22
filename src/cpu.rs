@@ -4,11 +4,7 @@
 // - Create SystemType enum to determine which chip-8 system to emulate (COSMAC VIP (OG), super-chip
 // and xo-chip)
 
-use std::{
-    fs::File,
-    io::Read,
-    sync::{Arc, RwLock, mpsc::Receiver},
-};
+use std::sync::{Arc, RwLock, mpsc::Receiver};
 
 use crate::chip_timer::ChipTimer;
 use crate::execute::*;
@@ -102,29 +98,13 @@ impl Chip8 {
 
         // Put characters into first 80 bytes of memory
         self.memory[0..FONTSET_SIZE].copy_from_slice(&FONTSET);
-        println!("Loaded font set");
     }
 
     pub fn load_rom(&mut self, path: &std::path::PathBuf) {
-        let max_rom_size = 4096 - 512;
-
         let rom_file = std::fs::read(path).unwrap();
-        //let mut rom_file = File::open(rp).unwrap_or_else(|e| {
-        //    println!("Failed to open ROM file: {}", e);
-        //    std::process::exit(1);
-        //});
-
-        // Read ROM contents into temporary buffer
-        //match rom_file.read_to_end(&mut tmp_buf) {
-        //    Ok(_) => (),
-        //    Err(e) => {
-        //        println!("Error occurred: {:?}", e);
-        //        std::process::exit(1);
-        //    }
-        //};
 
         // Check ROM size
-        if rom_file.len() > max_rom_size {
+        if rom_file.len() > MAX_ROM_SIZE {
             println!("Invalid ROM file: ROM is too large");
             std::process::exit(1);
         }
@@ -132,7 +112,7 @@ impl Chip8 {
 
         let start_address: usize = START_ADDRESS as usize;
 
-        // tmp_buf.iter().enumerate() returns a tuple - index and the byte being read
+        // iter().enumerate() returns a tuple - index and the byte being read
         for (i, &byte) in rom_file.iter().enumerate() {
             // Starting from 0x200, replace each byte in Chip-8
             // memory with the corresponding byte from the ROM
@@ -269,7 +249,6 @@ impl Chip8 {
                 // 8XY4: Add value of VY to VX
                 // If the result is larger than 255, it will overflow VX, if this happens,
                 // we set the value of register VF to 1, otherwise, set it to 0.
-                // TODO: Improve code here
 
                 // First check if the result will overflow
                 let result: u16 =
