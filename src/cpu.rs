@@ -1,3 +1,9 @@
+// TODO:
+// - Enable display clipping
+// - Fix display wait
+// - Create SystemType enum to determine which chip-8 system to emulate (COSMAC VIP (OG), super-chip
+// and xo-chip)
+
 use std::{
     fs::File,
     io::Read,
@@ -237,6 +243,7 @@ impl Chip8 {
             Chip8Instruction::_8XY0 => {
                 // 8XY0 - Set VX to value in VY
                 self.registers[decoded.x] = self.registers[decoded.y];
+
             }
             Chip8Instruction::_8XY1 => {
                 // 8XY1: Set VX to bitwise OR of VX and VY
