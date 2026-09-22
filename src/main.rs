@@ -28,8 +28,7 @@ fn main() {
     let mut esc_quits = false;
     let rom_str: Box<str>;
 
-    let shared_framebuffer: Arc<Mutex<DisplayArray>> =
-        Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
+    let shared_framebuffer = Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
 
     // Handle argument stuff in its own scope so it can all be freed when we're done
     {
@@ -109,7 +108,7 @@ fn main() {
 
     // Disable ESC to quit
     if !esc_quits {
-    rl.set_exit_key(None);
+        rl.set_exit_key(None);
     }
 
     let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
