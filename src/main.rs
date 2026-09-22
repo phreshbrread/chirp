@@ -1,7 +1,7 @@
 use raylib::prelude::*;
 use std::{
     env,
-    sync::{Arc, Mutex, mpsc},
+    sync::{Arc, Mutex, RwLock, mpsc},
     thread,
     time::Duration,
 };
@@ -28,7 +28,8 @@ fn main() {
     let mut esc_quits = false;
     let rom_str: Box<str>;
 
-    let shared_framebuffer = Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
+    //let shared_framebuffer = Arc::new(Mutex::new([false; CHIP8_DISPLAY_SIZE]));
+    let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
 
     // Handle argument stuff in its own scope so it can all be freed when we're done
     {
@@ -128,6 +129,9 @@ fn main() {
         });
     });
 
+    // Initialise blank screen
+    let mut screen = [false; CHIP8_DISPLAY_SIZE];
+
     // Main window loop
     while !rl.window_should_close() {
         // We assign the variable d to represent the active drawing context
@@ -143,7 +147,10 @@ fn main() {
         d.clear_background(Color::BLACK);
 
         // Only update display array if it changes
-        let screen = *shared_framebuffer.lock().unwrap();
+        screen = match shared_framebuffer.try_read() {
+            Ok(o) => *o,
+            Err(_) => screen,
+        };
 
         // Draw pixels row by row
         for h in 0..32 {

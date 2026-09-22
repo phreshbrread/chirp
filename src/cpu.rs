@@ -1,10 +1,7 @@
 use std::{
     fs::File,
     io::Read,
-    sync::{
-        Arc, Mutex,
-        mpsc::{Receiver, Sender, SyncSender},
-    },
+    sync::{Arc, RwLock, mpsc::Receiver},
 };
 
 use crate::chip_timer::ChipTimer;
@@ -143,7 +140,7 @@ impl Chip8 {
     pub fn cycle(
         &mut self,
         timer: &Arc<ChipTimer>,
-        cycle_framebuffer: &Arc<Mutex<DisplayArray>>,
+        cycle_framebuffer: &Arc<RwLock<DisplayArray>>,
         keypad_rx: &Receiver<KeypadArray>,
     ) {
         // Update keypad if necessary
@@ -533,8 +530,7 @@ impl Chip8 {
     }
 }
 
-fn update_framebuffer(cycle_framebuffer: &Arc<Mutex<DisplayArray>>, display: &DisplayArray) {
-    if let Ok(mut lock) = cycle_framebuffer.lock() {
-        *lock = *display;
-    }
+fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display: &DisplayArray) {
+    let mut lock = cycle_framebuffer.write().unwrap();
+    *lock = *display;
 }
