@@ -1,16 +1,18 @@
 use raylib::prelude::*;
 use std::{
-   path::PathBuf, sync::{Arc, RwLock, mpsc}, thread, time::Duration
+    sync::{Arc, RwLock, mpsc},
+    thread,
+    time::Duration,
 };
-use clap::Parser;
 
-// Include cpu.rs and timers.rs
 mod chip_timer;
+mod cli_args;
 mod cpu;
 mod execute;
 
 use chip_timer::ChipTimer;
 use chirp::*;
+use cli_args::parse_cli_args;
 
 // Resources:
 //   - https://austinmorlan.com/posts/chip8_emulator/
@@ -19,29 +21,8 @@ use chirp::*;
 //   - https://wiki.xxiivv.com/site/chip8.html
 //   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
 
-#[derive(Parser, Debug)]
-struct Args {
-    //#[arg(short, long)]
-    //system: Option<String>,
-
-    /// Emulate original hardware behaviour
-    #[arg(short, long)]
-    original_behaviour: bool,
-
-    /// Display current framerate
-    #[arg(short = 'f', long)]
-    show_fps: bool,
-
-    /// Enable using the ESC key to exit
-    #[arg(short, long)]
-    esc_quits: bool,
-
-    /// Path to a CHIP-8 ROM file
-    rom_path: PathBuf,
-}
-
 fn main() {
-    let args = Args::parse();
+    let args = parse_cli_args();
     dbg!(&args);
 
     let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
