@@ -31,7 +31,7 @@ impl ChipTimer {
         }
     }
 
-    // Delay timer
+    /* Delay timer */
     pub fn read_dt(&self) -> u8 {
         return self.delay_timer.load(Ordering::Relaxed);
     }
@@ -44,6 +44,7 @@ impl ChipTimer {
         self.sound_timer.store(val, Ordering::Relaxed);
     }
 
+    // Beep state
     pub fn should_beep(&self) -> bool {
         return self.should_beep.load(Ordering::Relaxed);
     }

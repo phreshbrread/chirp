@@ -20,9 +20,6 @@ pub struct Chip8 {
     pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
     pub og_behaviour: bool,    // Toggle to emulate quirks of original hardware
-    pub delay_timer: u8,
-    pub sound_timer: u8,
-    pub frame_count: u128,
 }
 
 #[derive(Debug)]
@@ -65,9 +62,6 @@ impl Chip8 {
             keypad: [false; 16],     // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
-            delay_timer: 0,
-            sound_timer: 0,
-            frame_count: 0,
         };
 
         new_cpu.load_font();
