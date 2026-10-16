@@ -1,6 +1,6 @@
 use minifb::{Key, Window};
 use std::{
-    process, thread,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -37,47 +37,6 @@ pub const CHIP8_KEYS: [Key; 16] = [
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type KeypadArray = [bool; 16];
-
-#[derive(Debug)]
-pub struct Flag<'a> {
-    pub short: Box<str>,
-    pub long: Box<str>,
-    pub desc: Box<str>,
-    pub active: &'a mut bool,
-}
-
-impl<'a> Flag<'a> {
-    pub fn new(s: &str, l: &str, d: &str, a: &'a mut bool) -> Self {
-        return Self {
-            short: s.into(),
-            long: l.into(),
-            desc: d.into(),
-            active: a,
-        };
-    }
-}
-
-/*
-pub fn poll_input_new(d: &RaylibHandle) -> KeypadArray {
-let mut keypad = [false; 16];
-
-for (index, &key) in CHIP8_KEYS.iter().enumerate() {
-keypad[index] = d.is_key_down(key);
-}
-
-return keypad;
-}
-
-pub fn poll_input(d: &RaylibDrawHandle) -> KeypadArray {
-let mut keypad = [false; 16];
-
-for (index, &key) in CHIP8_KEYS.iter().enumerate() {
-keypad[index] = d.is_key_down(key);
-}
-
-return keypad;
-}
-*/
 
 pub fn poll_input(w: &Window) -> KeypadArray {
     let mut keypad = [false; 16];
