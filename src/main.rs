@@ -91,6 +91,10 @@ fn main() {
 
     // Main window loop
     while window.is_open() {
+        if args.esc_quits && window.is_key_down(minifb::Key::Escape) {
+            std::process::exit(0);
+        }
+
         // Send input before rendering anything.
         keypad_tx
             .send(poll_input(&window))
