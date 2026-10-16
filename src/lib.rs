@@ -10,10 +10,8 @@ pub const MAX_ROM_SIZE: usize = 4096 - 512;
 
 // TODO: Allow for adjustment
 pub const SCREEN_SCALE: usize = 20;
-pub const SCREEN_W: usize = 64 * SCREEN_SCALE;
-pub const SCREEN_H: usize = 32 * SCREEN_SCALE;
-pub const DISPLAY_W: usize = 64;
-pub const DISPLAY_H: usize = 32;
+pub const SCREEN_W: usize = 64;
+pub const SCREEN_H: usize = 32;
 
 pub const CHIP8_KEYS: [Key; 16] = [
     Key::X,    // 0
@@ -37,6 +35,7 @@ pub const CHIP8_KEYS: [Key; 16] = [
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type KeypadArray = [bool; 16];
+pub struct ChipFramebuffer(Vec<u32>);
 
 pub fn poll_input(w: &Window) -> KeypadArray {
     let mut keypad = [false; 16];

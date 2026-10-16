@@ -4,7 +4,10 @@
 // - Create SystemType enum to determine which chip-8 system to emulate (COSMAC VIP (OG), super-chip
 // and xo-chip)
 
-use std::sync::{Arc, RwLock, mpsc::Receiver};
+use std::{
+    process,
+    sync::{Arc, RwLock, mpsc::Receiver},
+};
 
 use crate::chip_timer::ChipTimer;
 use crate::execute::*;
@@ -100,7 +103,7 @@ impl Chip8 {
         // Check ROM size
         if rom_file.len() > MAX_ROM_SIZE {
             println!("Invalid ROM file: ROM is too large");
-            std::process::exit(1);
+            process::exit(1);
         }
         println!("Opened ROM of size {} bytes", rom_file.len());
 
@@ -114,7 +117,7 @@ impl Chip8 {
         }
         println!("Loaded ROM into Chip-8 memory");
 
-        // Program counter is already set to the start address (0x200) in cpu::Chip8::new()
+        // Program counter is already set to the start address (0x200) in Chip8::new()
     }
 
     pub fn cycle(
@@ -153,7 +156,7 @@ impl Chip8 {
             Err(_) => {
                 println!("\nFatal error: unknown instruction");
                 dbg!(decoded);
-                std::process::exit(1);
+                process::exit(1);
             }
             Ok(o) => o,
         };

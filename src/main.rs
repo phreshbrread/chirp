@@ -1,4 +1,4 @@
-use minifb::{Window, WindowOptions};
+use minifb::{Window, WindowOptions, Key};
 use std::{
     sync::{Arc, RwLock, mpsc},
     thread,
@@ -52,8 +52,8 @@ fn main() {
 
     let mut window = match Window::new(
         "Resizable Window",
-        DISPLAY_W * SCREEN_SCALE,
-        DISPLAY_H * SCREEN_SCALE,
+        SCREEN_W * SCREEN_SCALE,
+        SCREEN_H * SCREEN_SCALE,
         WindowOptions {
             resize: true,
             ..WindowOptions::default()
@@ -87,11 +87,11 @@ fn main() {
     let mut screen = [false; CHIP8_DISPLAY_SIZE];
 
     // Minifb expects a framebuffer of 32-bit unsigned integers.
-    let mut buffer: Vec<u32> = vec![0 as u32; DISPLAY_W * DISPLAY_H];
+    let mut buffer: Vec<u32> = vec![0; SCREEN_W * SCREEN_H];
 
     // Main window loop
     while window.is_open() {
-        if args.esc_quits && window.is_key_down(minifb::Key::Escape) {
+        if args.esc_quits && window.is_key_down(Key::Escape) {
             std::process::exit(0);
         }
 
@@ -117,7 +117,7 @@ fn main() {
 
         // Update window
         window
-            .update_with_buffer(&buffer, DISPLAY_W, DISPLAY_H)
+            .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
     }
 
