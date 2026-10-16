@@ -1,3 +1,4 @@
+use minifb::{Key, Window};
 use std::{
     process, thread,
     time::{Duration, Instant},
@@ -8,32 +9,30 @@ pub const FONTSET_SIZE: usize = 80; // Fonts only take up 80 bytes
 pub const MAX_ROM_SIZE: usize = 4096 - 512;
 
 // TODO: Allow for adjustment
-pub const SCREEN_SCALE: i32 = 20;
-pub const SCREEN_W: i32 = 64 * SCREEN_SCALE;
-pub const SCREEN_H: i32 = 32 * SCREEN_SCALE;
+pub const SCREEN_SCALE: usize = 20;
+pub const SCREEN_W: usize = 64 * SCREEN_SCALE;
+pub const SCREEN_H: usize = 32 * SCREEN_SCALE;
 pub const DISPLAY_W: usize = 64;
 pub const DISPLAY_H: usize = 32;
 
-/*
-pub const CHIP8_KEYS: [KeyboardKey; 16] = [
-    KeyboardKey::KEY_X,     // 0
-    KeyboardKey::KEY_ONE,   // 1
-    KeyboardKey::KEY_TWO,   // 2
-    KeyboardKey::KEY_THREE, // 3
-    KeyboardKey::KEY_Q,     // 4
-    KeyboardKey::KEY_W,     // 5
-    KeyboardKey::KEY_E,     // 6
-    KeyboardKey::KEY_A,     // 7
-    KeyboardKey::KEY_S,     // 8
-    KeyboardKey::KEY_D,     // 9
-    KeyboardKey::KEY_Z,     // A (10)
-    KeyboardKey::KEY_C,     // B (11)
-    KeyboardKey::KEY_FOUR,  // C (12)
-    KeyboardKey::KEY_R,     // D (13)
-    KeyboardKey::KEY_F,     // E (14)
-    KeyboardKey::KEY_V,     // F (15)
+pub const CHIP8_KEYS: [Key; 16] = [
+    Key::X,    // 0
+    Key::Key1, // 1
+    Key::Key2, // 2
+    Key::Key3, // 3
+    Key::Q,    // 4
+    Key::W,    // 5
+    Key::E,    // 6
+    Key::A,    // 7
+    Key::S,    // 8
+    Key::D,    // 9
+    Key::Z,    // A (10)
+    Key::C,    // B (11)
+    Key::Key4, // C (12)
+    Key::R,    // D (13)
+    Key::F,    // E (14)
+    Key::V,    // F (15)
 ];
-*/
 
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
@@ -60,25 +59,35 @@ impl<'a> Flag<'a> {
 
 /*
 pub fn poll_input_new(d: &RaylibHandle) -> KeypadArray {
-    let mut keypad = [false; 16];
+let mut keypad = [false; 16];
 
-    for (index, &key) in CHIP8_KEYS.iter().enumerate() {
-        keypad[index] = d.is_key_down(key);
-    }
+for (index, &key) in CHIP8_KEYS.iter().enumerate() {
+keypad[index] = d.is_key_down(key);
+}
 
-    return keypad;
+return keypad;
 }
 
 pub fn poll_input(d: &RaylibDrawHandle) -> KeypadArray {
+let mut keypad = [false; 16];
+
+for (index, &key) in CHIP8_KEYS.iter().enumerate() {
+keypad[index] = d.is_key_down(key);
+}
+
+return keypad;
+}
+*/
+
+pub fn poll_input(w: &Window) -> KeypadArray {
     let mut keypad = [false; 16];
 
     for (index, &key) in CHIP8_KEYS.iter().enumerate() {
-        keypad[index] = d.is_key_down(key);
+        keypad[index] = w.is_key_down(key);
     }
 
     return keypad;
 }
-*/
 
 pub fn precise_interval_loop<F>(interval: Duration, mut task: F)
 where

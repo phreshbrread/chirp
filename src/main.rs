@@ -52,8 +52,8 @@ fn main() {
 
     let mut window = match Window::new(
         "Resizable Window",
-        DISPLAY_W,
-        DISPLAY_H,
+        DISPLAY_W * SCREEN_SCALE,
+        DISPLAY_H * SCREEN_SCALE,
         WindowOptions {
             resize: true,
             ..WindowOptions::default()
@@ -66,11 +66,9 @@ fn main() {
         }
     };
     window.set_target_fps(60);
+    window.set_title(&window_title);
 
-    // Initialize raylib audio handle
-    //let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
-    //audio_handle.set_audio_stream_buffer_size_default(4096);
-
+    // TODO: Replace this
     //let beep = audio_handle
     //    .new_sound("assets/beep.wav")
     //    .expect("Failed to load beep sound file");
@@ -85,63 +83,39 @@ fn main() {
         });
     });
 
-    // Initialise blank screen
+    // Initialise blank screen.
     let mut screen = [false; CHIP8_DISPLAY_SIZE];
-    let mut buffer: Vec<u32> = vec![0; DISPLAY_W * DISPLAY_H];
+
+    // Minifb expects a framebuffer of 32-bit unsigned integers.
+    let mut buffer: Vec<u32> = vec![0 as u32; DISPLAY_W * DISPLAY_H];
 
     // Main window loop
     while window.is_open() {
         // Send input before rendering anything.
-        //keypad_tx.send(poll_input_new(&rl)).unwrap();
+        keypad_tx
+            .send(poll_input(&window))
+            .expect("Failed to poll input.");
 
-        //if timer_handle.should_beep() {
-        //    beep.play();
-        //}
+        if timer_handle.should_beep() {
+            // TODO: Play beep
+        }
 
         // Only update screen array if the framebuffer changes.
         if let Ok(new_screen) = shared_framebuffer.try_read() {
             screen = *new_screen;
         }
 
-        // Convert true/false into u32 used in the framebuffer
+        // Convert the Chip-8 true/false array into 32-bit hex values for minifb.
         for (i, e) in buffer.iter_mut().enumerate() {
-            *e = u32::from(screen[i]);
+            // White if true, black if false
+            *e = if screen[i] { 0xFFFFFF } else { 0x000000 };
         }
-
-        // Begin drawing after updating screen.
-        // We assign the variable d to represent the active drawing context.
-        //let mut d = rl.begin_drawing(&thread);
-
-        //d.clear_background(Color::BLACK);
-
-        // Draw pixels row by row
-        /*
-        for h in 0..32 {
-            // Height
-            for w in 0..64 {
-                // Width
-                let pixel: i32 = (h * 64) + w;
-
-                if screen[pixel as usize] == true {
-                    d.draw_rectangle(
-                        w * SCREEN_SCALE,
-                        h * SCREEN_SCALE,
-                        SCREEN_SCALE,
-                        SCREEN_SCALE,
-                        Color::WHITE,
-                    );
-                }
-            }
-        }
-
-        if args.show_fps {
-            d.draw_fps(0, 0);
-        }
-        */
 
         // Update window
         window
             .update_with_buffer(&buffer, DISPLAY_W, DISPLAY_H)
             .unwrap();
     }
+
+    // TODO: Show FPS
 }
