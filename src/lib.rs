@@ -1,7 +1,3 @@
-use raylib::{
-    RaylibHandle,
-    prelude::{KeyboardKey, RaylibDrawHandle},
-};
 use std::{
     process, thread,
     time::{Duration, Instant},
@@ -15,7 +11,10 @@ pub const MAX_ROM_SIZE: usize = 4096 - 512;
 pub const SCREEN_SCALE: i32 = 20;
 pub const SCREEN_W: i32 = 64 * SCREEN_SCALE;
 pub const SCREEN_H: i32 = 32 * SCREEN_SCALE;
+pub const DISPLAY_W: usize = 64;
+pub const DISPLAY_H: usize = 32;
 
+/*
 pub const CHIP8_KEYS: [KeyboardKey; 16] = [
     KeyboardKey::KEY_X,     // 0
     KeyboardKey::KEY_ONE,   // 1
@@ -34,6 +33,7 @@ pub const CHIP8_KEYS: [KeyboardKey; 16] = [
     KeyboardKey::KEY_F,     // E (14)
     KeyboardKey::KEY_V,     // F (15)
 ];
+*/
 
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
@@ -58,6 +58,7 @@ impl<'a> Flag<'a> {
     }
 }
 
+/*
 pub fn poll_input_new(d: &RaylibHandle) -> KeypadArray {
     let mut keypad = [false; 16];
 
@@ -77,17 +78,7 @@ pub fn poll_input(d: &RaylibDrawHandle) -> KeypadArray {
 
     return keypad;
 }
-
-pub fn show_help(f: Vec<Flag>) -> ! {
-    println!("USAGE:\n chirp [FLAGS] [ROM]\n");
-    println!("FLAGS:");
-
-    for flag in f.iter() {
-        println!("  {:<5}{:<15}{:}", flag.short, flag.long, flag.desc);
-    }
-
-    process::exit(1);
-}
+*/
 
 pub fn precise_interval_loop<F>(interval: Duration, mut task: F)
 where

@@ -1,4 +1,4 @@
-use raylib::prelude::*;
+use minifb::{Window, WindowOptions};
 use std::{
     sync::{Arc, RwLock, mpsc},
     thread,
@@ -49,24 +49,31 @@ fn main() {
 
     // Initialize window
     let window_title = format!("Chirp | {}", args.rom_path.to_str().unwrap());
-    let (mut rl, thread) = raylib::init()
-        .size(SCREEN_W, SCREEN_H)
-        .title(window_title.as_str())
-        .build();
-    rl.set_target_fps(60);
 
-    // Disable ESC to quit
-    if !args.esc_quits {
-        rl.set_exit_key(None);
-    }
+    let mut window = match Window::new(
+        "Resizable Window",
+        DISPLAY_W,
+        DISPLAY_H,
+        WindowOptions {
+            resize: true,
+            ..WindowOptions::default()
+        },
+    ) {
+        Ok(win) => win,
+        Err(err) => {
+            println!("Failed to create minifb window: {err}");
+            std::process::exit(1);
+        }
+    };
+    window.set_target_fps(60);
 
     // Initialize raylib audio handle
-    let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
-    audio_handle.set_audio_stream_buffer_size_default(4096);
+    //let audio_handle = RaylibAudio::init_audio_device().expect("Failed to initialise audio device");
+    //audio_handle.set_audio_stream_buffer_size_default(4096);
 
-    let beep = audio_handle
-        .new_sound("assets/beep.wav")
-        .expect("Failed to load beep sound file");
+    //let beep = audio_handle
+    //    .new_sound("assets/beep.wav")
+    //    .expect("Failed to load beep sound file");
 
     let timer_clone = Arc::clone(&timer_handle);
     let cycle_framebuffer = Arc::clone(&shared_framebuffer);
@@ -80,28 +87,35 @@ fn main() {
 
     // Initialise blank screen
     let mut screen = [false; CHIP8_DISPLAY_SIZE];
+    let mut buffer: Vec<u32> = vec![0; DISPLAY_W * DISPLAY_H];
 
     // Main window loop
-    while !rl.window_should_close() {
+    while window.is_open() {
         // Send input before rendering anything.
-        keypad_tx.send(poll_input_new(&rl)).unwrap();
+        //keypad_tx.send(poll_input_new(&rl)).unwrap();
 
-        if timer_handle.should_beep() {
-            beep.play();
-        }
+        //if timer_handle.should_beep() {
+        //    beep.play();
+        //}
 
         // Only update screen array if the framebuffer changes.
         if let Ok(new_screen) = shared_framebuffer.try_read() {
             screen = *new_screen;
         }
 
+        // Convert true/false into u32 used in the framebuffer
+        for (i, e) in buffer.iter_mut().enumerate() {
+            *e = u32::from(screen[i]);
+        }
+
         // Begin drawing after updating screen.
         // We assign the variable d to represent the active drawing context.
-        let mut d = rl.begin_drawing(&thread);
+        //let mut d = rl.begin_drawing(&thread);
 
-        d.clear_background(Color::BLACK);
+        //d.clear_background(Color::BLACK);
 
         // Draw pixels row by row
+        /*
         for h in 0..32 {
             // Height
             for w in 0..64 {
@@ -123,5 +137,11 @@ fn main() {
         if args.show_fps {
             d.draw_fps(0, 0);
         }
+        */
+
+        // Update window
+        window
+            .update_with_buffer(&buffer, DISPLAY_W, DISPLAY_H)
+            .unwrap();
     }
 }
