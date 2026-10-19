@@ -17,6 +17,8 @@
       cmake
       rustPlatform.bindgenHook
       llvmPackages.libclang
+      pkg-config
+      alsa-lib
     ];
 
     runtimeDeps = with pkgs; [

@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.6.7", features = ["derive"] }
 minifb = "0.29.0"
 rand = "0.10.2"
+rodio = { version = "0.23", default-features = false, features = ["playback"] }

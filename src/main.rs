@@ -4,6 +4,8 @@ use std::{
     thread,
     time::Duration,
 };
+use rodio::{MixerDeviceSink, Player};
+use rodio::source::{SineWave, Source};
 
 mod chip_timer;
 mod cli_args;
@@ -73,6 +75,14 @@ fn main() {
     //    .new_sound("assets/beep.wav")
     //    .expect("Failed to load beep sound file");
 
+    // Get audio handle
+    // TODO: Allow reusing beep sound
+    let audio_handle = rodio::DeviceSinkBuilder::open_default_sink()
+        .expect("Failed to open default audio stream");
+    let player = rodio::Player::connect_new(&audio_handle.mixer());
+    let source = rodio::source::SineWave::new(440.0).take_duration(Duration::from_secs(1) / 60).amplify(0.20);
+    player.append(source);
+
     let timer_clone = Arc::clone(&timer_handle);
     let cycle_framebuffer = Arc::clone(&shared_framebuffer);
     let _cycle_thread = thread::spawn(move || {
@@ -101,7 +111,7 @@ fn main() {
             .expect("Failed to poll input.");
 
         if timer_handle.should_beep() {
-            // TODO: Play beep
+            player.play();
         }
 
         // Only update screen array if the framebuffer changes.
@@ -119,7 +129,7 @@ fn main() {
         window
             .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
-    }
+        }
 
     // TODO: Show FPS
 }
