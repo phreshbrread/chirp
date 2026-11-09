@@ -3,6 +3,10 @@
 // - Fix display wait
 // - Create SystemType enum to determine which chip-8 system to emulate (COSMAC VIP (OG), super-chip
 // and xo-chip)
+// TODO: (Performance-related)
+// - Only call update_framebuffer() at 60hz instead of 500hz
+// - Use stack array and stack pointer instead of Vec<u16>
+// - Use a u16 bitmask for keypad
 
 use std::{
     process,

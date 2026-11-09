@@ -1,7 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
-use rodio::{
-    source::{SineWave, Source},
-};
+use rodio::source::{SineWave, Source};
 use std::{
     sync::{Arc, RwLock, atomic::Ordering, mpsc},
     thread,
@@ -49,7 +47,7 @@ fn main() {
     let window_title = format!("Chirp | {}", args.rom_path.to_str().unwrap());
 
     let mut window = match Window::new(
-        "Resizable Window",
+        &window_title,
         SCREEN_W * SCREEN_SCALE,
         SCREEN_H * SCREEN_SCALE,
         WindowOptions {
@@ -100,10 +98,11 @@ fn main() {
             .expect("Failed to poll input.");
 
         // Play beep when sound timer > 0
-        if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
+        let should_beep = SOUND_TIMER.load(Ordering::Relaxed) > 0;
+        if should_beep && beep.is_paused() {
             // TODO: Suppress harsh start/stop noise
             beep.play();
-        } else if !beep.is_paused() {
+        } else if !should_beep && !beep.is_paused() {
             beep.pause();
         }
 

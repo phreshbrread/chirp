@@ -1,8 +1,7 @@
 use minifb::{Key, Window};
 use std::{
     sync::{
-        Arc,
-        RwLock,
+        Arc, RwLock,
         atomic::{AtomicU8, Ordering},
     },
     thread,
