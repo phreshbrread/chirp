@@ -4,10 +4,10 @@ build:
 	cargo build
 
 sound-test: build
-	./target/debug/chirp -e assets/test/7-beep.ch8
+	./target/debug/chirp -e -f assets/test/7-beep.ch8
 
 benchmark: build
-	./target/debug/chirp -e assets/test/benchmark.ch8
+	./target/debug/chirp -e -f assets/test/benchmark.ch8
 
 tetris: build
-	./target/debug/chirp -e assets/test/tetris.ch8
+	./target/debug/chirp -e -f assets/test/tetris.ch8

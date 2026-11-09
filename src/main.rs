@@ -123,11 +123,19 @@ fn main() {
             *e = if screen[i] { 0xFFFFFF } else { 0x000000 };
         }
 
+        if args.show_fps {
+            // TODO: Show FPS
+
+            /*
+            for i in &mut buffer[1..100] {
+                *i = 0xFF48EE;
+            }
+            */
+        }
+
         // Update window
         window
             .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
-    }
-
-    // TODO: Show FPS
+        }
 }
