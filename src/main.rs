@@ -76,11 +76,8 @@ fn main() {
     // TODO: Allow reusing beep sound
     let audio_handle =
         rodio::DeviceSinkBuilder::open_default_sink().expect("Failed to open default audio stream");
-    let player = rodio::Player::connect_new(&audio_handle.mixer());
-    let source = rodio::source::SineWave::new(440.0)
-        .take_duration(Duration::from_secs(1) / 60)
-        .amplify(0.20);
-    player.append(source);
+    let beep = rodio::Player::connect_new(&audio_handle.mixer());
+    beep.append(SineWave::new(440.0).amplify(0.50));
 
     let cycle_framebuffer = Arc::clone(&shared_framebuffer);
     let _cycle_thread = thread::spawn(move || {
@@ -108,8 +105,12 @@ fn main() {
             .send(poll_input(&window))
             .expect("Failed to poll input.");
 
+        // Play beep when sound timer > 0
         if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
-            player.play();
+            // TODO: Suppress harsh start/stop noise
+            beep.play();
+        } else if !beep.is_paused() {
+            beep.pause();
         }
 
         // Only update screen array if the framebuffer changes.
@@ -126,16 +127,14 @@ fn main() {
         if args.show_fps {
             // TODO: Show FPS
 
-            /*
-            for i in &mut buffer[1..100] {
-                *i = 0xFF48EE;
-            }
-            */
+            // for i in &mut buffer[1..100] {
+            //     *i = 0x00FF00;
+            // }
         }
 
         // Update window
         window
             .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
-        }
+    }
 }
