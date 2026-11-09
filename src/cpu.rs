@@ -126,8 +126,8 @@ impl Chip8 {
     ) {
         // Update keypad if necessary
         self.keypad = match keypad_rx.try_recv() {
+            Ok(new_kp) => new_kp,
             Err(_) => self.keypad,
-            Ok(o) => o,
         };
 
         // --- Fetching ----------------------------------------------------

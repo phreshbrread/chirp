@@ -33,10 +33,10 @@ fn main() {
     // Attempt to load ROM
     chip8.load_rom(&args.rom_path);
 
-    // Set up channels
+    // Set up IO channels
     let (keypad_tx, keypad_rx) = mpsc::channel();
 
-    // Initialize global timer handle
+    // Global timer thread
     let _timer_thread = thread::spawn(move || {
         // Timer updates at a fixed 60Hz
         let interval = Duration::from_secs(1) / 60;
