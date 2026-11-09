@@ -1,9 +1,10 @@
 use minifb::{Key, Window, WindowOptions};
-use rodio::source::{SineWave, Source};
-use rodio::{MixerDeviceSink, Player};
-use std::sync::atomic::Ordering;
+use rodio::{
+    MixerDeviceSink, Player,
+    source::{SineWave, Source},
+};
 use std::{
-    sync::{Arc, RwLock, atomic::Ordering::Relaxed, mpsc},
+    sync::{Arc, RwLock, atomic::Ordering, mpsc},
     thread,
     time::Duration,
 };
@@ -109,7 +110,6 @@ fn main() {
 
         if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
             player.play();
-            println!("{}", SOUND_TIMER.load(Ordering::Relaxed));
         }
 
         // Only update screen array if the framebuffer changes.
