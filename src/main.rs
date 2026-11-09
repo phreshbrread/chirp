@@ -54,6 +54,7 @@ fn main() {
         SCREEN_H * SCREEN_SCALE,
         WindowOptions {
             resize: true,
+            scale_mode: minifb::ScaleMode::AspectRatioStretch,
             ..WindowOptions::default()
         },
     ) {
@@ -66,13 +67,7 @@ fn main() {
     window.set_target_fps(60);
     window.set_title(&window_title);
 
-    // TODO: Replace this
-    //let beep = audio_handle
-    //    .new_sound("assets/beep.wav")
-    //    .expect("Failed to load beep sound file");
-
-    // Get audio handle
-    // TODO: Allow reusing beep sound
+    // Initialize beep
     let audio_handle =
         rodio::DeviceSinkBuilder::open_default_sink().expect("Failed to open default audio stream");
     let beep = rodio::Player::connect_new(&audio_handle.mixer());
