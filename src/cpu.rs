@@ -6,10 +6,9 @@
 
 use std::{
     process,
-    sync::{Arc, RwLock, mpsc::Receiver},
+    sync::{Arc, RwLock, atomic::Ordering, mpsc::Receiver},
 };
 
-use crate::chip_timer::ChipTimer;
 use crate::execute::*;
 use chirp::*;
 
@@ -122,7 +121,6 @@ impl Chip8 {
 
     pub fn cycle(
         &mut self,
-        timer: &Arc<ChipTimer>,
         cycle_framebuffer: &Arc<RwLock<DisplayArray>>,
         keypad_rx: &Receiver<KeypadArray>,
     ) {
@@ -415,7 +413,7 @@ impl Chip8 {
             Chip8Instruction::_FX07 => {
                 // FX07: Set VX to value of delay timer
 
-                self.registers[decoded.x] = timer.read_dt();
+                self.registers[decoded.x] = DELAY_TIMER.load(Ordering::Relaxed);
             }
 
             Chip8Instruction::_FX0A => {
@@ -432,12 +430,15 @@ impl Chip8 {
 
             Chip8Instruction::_FX15 => {
                 // FX15: Set delay timer equal to VX
-                timer.write_dt(self.registers[decoded.x]);
+
+                //timer.write_dt(self.registers[decoded.x]);
+                DELAY_TIMER.store(self.registers[decoded.x], Ordering::Relaxed);
             }
 
             Chip8Instruction::_FX18 => {
                 // FX18: Set sound timer equal to VX
-                timer.write_st(self.registers[decoded.x]);
+                //timer.write_st(self.registers[decoded.x]);
+                SOUND_TIMER.store(self.registers[decoded.x], Ordering::Relaxed);
             }
 
             Chip8Instruction::_FX29 => {

@@ -1,8 +1,12 @@
 use minifb::{Key, Window};
 use std::{
+    sync::atomic::{AtomicU8, Ordering},
     thread,
     time::{Duration, Instant},
 };
+
+pub static DELAY_TIMER: AtomicU8 = AtomicU8::new(0);
+pub static SOUND_TIMER: AtomicU8 = AtomicU8::new(0);
 
 pub const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
 pub const FONTSET_SIZE: usize = 80; // Fonts only take up 80 bytes
@@ -36,6 +40,15 @@ pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type KeypadArray = [bool; 16];
 pub struct ChipFramebuffer(Vec<u32>);
+
+pub fn tick_timers() {
+    if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
+        DELAY_TIMER.fetch_sub(1, Ordering::Relaxed);
+    }
+    if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
+        SOUND_TIMER.fetch_sub(1, Ordering::Relaxed);
+    }
+}
 
 pub fn poll_input(w: &Window) -> KeypadArray {
     let mut keypad = [false; 16];

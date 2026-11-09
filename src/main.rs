@@ -1,18 +1,17 @@
-use minifb::{Window, WindowOptions, Key};
+use minifb::{Key, Window, WindowOptions};
+use rodio::source::{SineWave, Source};
+use rodio::{MixerDeviceSink, Player};
+use std::sync::atomic::Ordering;
 use std::{
-    sync::{Arc, RwLock, mpsc},
+    sync::{Arc, RwLock, atomic::Ordering::Relaxed, mpsc},
     thread,
     time::Duration,
 };
-use rodio::{MixerDeviceSink, Player};
-use rodio::source::{SineWave, Source};
 
-mod chip_timer;
 mod cli_args;
 mod cpu;
 mod execute;
 
-use chip_timer::ChipTimer;
 use chirp::*;
 
 // Resources:
@@ -37,15 +36,12 @@ fn main() {
     let (keypad_tx, keypad_rx) = mpsc::channel();
 
     // Initialize global timer handle
-    let timer_handle = Arc::new(ChipTimer::new());
-
-    let timer_clone = Arc::clone(&timer_handle);
     let _timer_thread = thread::spawn(move || {
         // Timer updates at a fixed 60Hz
         let interval = Duration::from_secs(1) / 60;
 
         precise_interval_loop(interval, || {
-            timer_clone.tick();
+            tick_timers();
         });
     });
 
@@ -77,19 +73,20 @@ fn main() {
 
     // Get audio handle
     // TODO: Allow reusing beep sound
-    let audio_handle = rodio::DeviceSinkBuilder::open_default_sink()
-        .expect("Failed to open default audio stream");
+    let audio_handle =
+        rodio::DeviceSinkBuilder::open_default_sink().expect("Failed to open default audio stream");
     let player = rodio::Player::connect_new(&audio_handle.mixer());
-    let source = rodio::source::SineWave::new(440.0).take_duration(Duration::from_secs(1) / 60).amplify(0.20);
+    let source = rodio::source::SineWave::new(440.0)
+        .take_duration(Duration::from_secs(1) / 60)
+        .amplify(0.20);
     player.append(source);
 
-    let timer_clone = Arc::clone(&timer_handle);
     let cycle_framebuffer = Arc::clone(&shared_framebuffer);
     let _cycle_thread = thread::spawn(move || {
         let interval = Duration::from_secs(1) / 500;
 
         precise_interval_loop(interval, || {
-            chip8.cycle(&timer_clone, &cycle_framebuffer, &keypad_rx);
+            chip8.cycle(&cycle_framebuffer, &keypad_rx);
         });
     });
 
@@ -110,8 +107,9 @@ fn main() {
             .send(poll_input(&window))
             .expect("Failed to poll input.");
 
-        if timer_handle.should_beep() {
+        if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
             player.play();
+            println!("{}", SOUND_TIMER.load(Ordering::Relaxed));
         }
 
         // Only update screen array if the framebuffer changes.
@@ -129,7 +127,7 @@ fn main() {
         window
             .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
-        }
+    }
 
     // TODO: Show FPS
 }
