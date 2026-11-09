@@ -8,10 +8,7 @@
 // - Use stack array and stack pointer instead of Vec<u16>
 // - Use a u16 bitmask for keypad
 
-use std::{
-    process,
-    sync::{Arc, RwLock, atomic::Ordering, mpsc::Receiver},
-};
+use std::{process, sync::atomic::Ordering};
 
 use crate::execute::*;
 use chirp::*;
@@ -123,17 +120,7 @@ impl Chip8 {
         // Program counter is already set to the start address (0x200) in Chip8::new()
     }
 
-    pub fn cycle(
-        &mut self,
-        cycle_framebuffer: &Arc<RwLock<DisplayArray>>,
-        keypad_rx: &Receiver<KeypadArray>,
-    ) {
-        // Update keypad if necessary
-        self.keypad = match keypad_rx.try_recv() {
-            Ok(new_kp) => new_kp,
-            Err(_) => self.keypad,
-        };
-
+    pub fn cycle(&mut self) {
         // --- Fetching ----------------------------------------------------
         // Fetch the next two bytes from the program counter and combine them
         // into a single 16-bit (two byte) instruction.
@@ -167,8 +154,6 @@ impl Chip8 {
             Chip8Instruction::_00E0 => {
                 // 00E0: Clear the screen
                 self.display.fill(false);
-
-                update_framebuffer(cycle_framebuffer, &self.display);
             }
             Chip8Instruction::_00EE => {
                 // 00EE: Set program counter to the last address on the stack,
@@ -395,8 +380,6 @@ impl Chip8 {
                 } else {
                     self.registers[15] = 0;
                 }
-
-                update_framebuffer(cycle_framebuffer, &self.display);
             }
             Chip8Instruction::_EX9A => {
                 let key: usize = self.registers[decoded.x] as usize;

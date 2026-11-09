@@ -1,10 +1,6 @@
 use minifb::{Key, Window, WindowOptions};
 use rodio::source::{SineWave, Source};
-use std::{
-    sync::{Arc, RwLock, atomic::Ordering, mpsc},
-    thread,
-    time::Duration,
-};
+use std::{sync::atomic::Ordering, thread, time::Duration};
 
 mod cli_args;
 mod cpu;
@@ -25,13 +21,9 @@ fn main() {
 
     // Initialize chip system & framebuffer
     let mut chip8 = cpu::Chip8::new(args.original_behaviour);
-    let shared_framebuffer = Arc::new(RwLock::new([false; CHIP8_DISPLAY_SIZE]));
 
     // Attempt to load ROM
     chip8.load_rom(&args.rom_path);
-
-    // Set up IO channels
-    let (keypad_tx, keypad_rx) = mpsc::channel();
 
     // Global timer thread
     let _timer_thread = thread::spawn(move || {
@@ -71,18 +63,6 @@ fn main() {
     let beep = rodio::Player::connect_new(&audio_handle.mixer());
     beep.append(SineWave::new(440.0).amplify(0.50));
 
-    let cycle_framebuffer = Arc::clone(&shared_framebuffer);
-    let _cycle_thread = thread::spawn(move || {
-        let interval = Duration::from_secs(1) / 500;
-
-        precise_interval_loop(interval, || {
-            chip8.cycle(&cycle_framebuffer, &keypad_rx);
-        });
-    });
-
-    // Initialise blank screen.
-    let mut screen = [false; CHIP8_DISPLAY_SIZE];
-
     // Minifb expects a framebuffer of 32-bit unsigned integers.
     let mut buffer: Vec<u32> = vec![0; SCREEN_W * SCREEN_H];
 
@@ -92,10 +72,14 @@ fn main() {
             std::process::exit(0);
         }
 
-        // Send input before rendering anything.
-        keypad_tx
-            .send(poll_input(&window))
-            .expect("Failed to poll input.");
+        // Poll input before rendering anything.
+        chip8.keypad = poll_input(&window);
+
+        // Run 9 cycles per thread
+        // 60hz * 9 cycles = 540hz
+        for _ in 0..=9 {
+            chip8.cycle();
+        }
 
         // Play beep when sound timer > 0
         let should_beep = SOUND_TIMER.load(Ordering::Relaxed) > 0;
@@ -106,23 +90,15 @@ fn main() {
             beep.pause();
         }
 
-        // Only update screen array if the framebuffer changes.
-        if let Ok(new_screen) = shared_framebuffer.try_read() {
-            screen = *new_screen;
-        }
-
         // Convert the Chip-8 true/false array into 32-bit hex values for minifb.
+        // TODO: Replace inefficient conversion with a better method
         for (i, e) in buffer.iter_mut().enumerate() {
             // White if true, black if false
-            *e = if screen[i] { 0xFFFFFF } else { 0x000000 };
+            *e = if chip8.display[i] { 0xFFFFFF } else { 0x000000 };
         }
 
         if args.show_fps {
             // TODO: Show FPS
-
-            // for i in &mut buffer[1..100] {
-            //     *i = 0x00FF00;
-            // }
         }
 
         // Update window

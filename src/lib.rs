@@ -48,7 +48,6 @@ pub const CHIP8_KEYS: [Key; 16] = [
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type KeypadArray = [bool; 16];
-pub struct ChipFramebuffer(Vec<u32>);
 
 pub fn tick_timers() {
     if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
