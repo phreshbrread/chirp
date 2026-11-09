@@ -507,8 +507,3 @@ impl Chip8 {
         }
     }
 }
-
-fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display: &DisplayArray) {
-    let mut lock = cycle_framebuffer.write().unwrap();
-    *lock = *display;
-}

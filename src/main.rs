@@ -1,6 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
 use rodio::{
-    MixerDeviceSink, Player,
     source::{SineWave, Source},
 };
 use std::{

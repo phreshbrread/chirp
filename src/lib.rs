@@ -1,6 +1,10 @@
 use minifb::{Key, Window};
 use std::{
-    sync::atomic::{AtomicU8, Ordering},
+    sync::{
+        Arc,
+        RwLock,
+        atomic::{AtomicU8, Ordering},
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -48,6 +52,11 @@ pub fn tick_timers() {
     if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
         SOUND_TIMER.fetch_sub(1, Ordering::Relaxed);
     }
+}
+
+pub fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display: &DisplayArray) {
+    let mut lock = cycle_framebuffer.write().unwrap();
+    *lock = *display;
 }
 
 pub fn poll_input(w: &Window) -> KeypadArray {
