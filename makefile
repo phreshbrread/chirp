@@ -11,3 +11,6 @@ benchmark: build
 
 tetris: build
 	./target/debug/chirp -e -f assets/test/tetris.ch8
+
+keypad-test: build
+	./target/debug/chirp -e -f assets/test/6-keypad.ch8

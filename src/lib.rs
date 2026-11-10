@@ -8,12 +8,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub enum SystemType {
-    Chip8,
-    SuperChip,
-    XoChip,
-}
-
 pub static DELAY_TIMER: AtomicU8 = AtomicU8::new(0);
 pub static SOUND_TIMER: AtomicU8 = AtomicU8::new(0);
 

@@ -1,13 +1,11 @@
 // TODO:
 // - Enable display clipping
 // - Fix display wait
-// - Create SystemType enum to determine which chip-8 system to emulate (COSMAC VIP (OG), super-chip
-// and xo-chip)
 // TODO: (Performance-related)
 // - Only call update_framebuffer() at 60hz instead of 500hz
 // - Use a u16 bitmask for keypad
 
-use std::{process, sync::atomic::Ordering};
+use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
 use crate::execute::*;
 use chirp::*;
@@ -22,6 +20,7 @@ pub struct Chip8 {
     pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
     og_behaviour: bool,        // Toggle to emulate quirks of original hardware
+    sys_type: SystemType,      // Chip-8 variant
 }
 
 #[derive(Debug)]
@@ -64,6 +63,7 @@ impl Chip8 {
             keypad: [false; 16],     // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
+            sys_type: SystemType::Chip8, // Set based on user choice
         };
 
         new_cpu.load_font();
@@ -96,8 +96,14 @@ impl Chip8 {
         self.memory[0..FONTSET_SIZE].copy_from_slice(&FONTSET);
     }
 
-    pub fn load_rom(&mut self, path: &std::path::PathBuf) {
-        let rom_file = std::fs::read(path).unwrap();
+    pub fn load_rom(&mut self, path: &PathBuf) {
+        let rom_file = match fs::read(path) {
+            Ok(rom) => rom,
+            Err(err) => {
+                println!("Failed to open ROM: {err}");
+                process::exit(1);
+            }
+        };
 
         // Check ROM size
         if rom_file.len() > MAX_ROM_SIZE {
@@ -140,13 +146,10 @@ impl Chip8 {
         let decoded = decode_opcode(opcode);
 
         // Get next instruction from decoded opcode
-        let instruction = match get_instruction(&decoded, self.og_behaviour) {
-            Err(_) => {
-                println!("\nFatal error: unknown instruction");
-                dbg!(decoded);
-                process::exit(1);
-            }
-            Ok(o) => o,
+        let Ok(instruction) = get_instruction(&decoded, self.og_behaviour) else {
+            println!("\nFatal error: unknown instruction");
+            dbg!(decoded);
+            process::exit(1);
         };
 
         match instruction {
@@ -519,4 +522,12 @@ impl ChipStack {
         self.sp -= 1;
         return val;
     }
+}
+
+// TODO: Use this
+#[derive(Debug)]
+pub enum SystemType {
+    Chip8,
+    SuperChip,
+    XoChip,
 }
