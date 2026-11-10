@@ -3,11 +3,11 @@
 // - Fix display wait
 // TODO: (Performance-related)
 // - Only call update_framebuffer() at 60hz instead of 500hz
-// - Use a u16 bitmask for keypad
 
 use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
 use crate::execute::*;
+use bitvec::prelude::*;
 use chirp::*;
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Chip8 {
     index_reg: u16,            // 16-bit register to hold memory addresses
     pcounter: u16,             // Program counter
     stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
-    pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
+    pub keypad: Keypad,        // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
     og_behaviour: bool,        // Toggle to emulate quirks of original hardware
     sys_type: SystemType,      // Chip-8 variant
@@ -60,7 +60,7 @@ impl Chip8 {
             index_reg: 0,                         // Clear index register
             pcounter: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
-            keypad: [false; 16],     // Set all keys to unpressed
+            keypad: BitArray::ZERO,  // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
             sys_type: SystemType::Chip8, // Set based on user choice
@@ -410,7 +410,7 @@ impl Chip8 {
                 //
                 // If no key is detected, we simply rewind execution by one step so we keep
                 // hitting this check, otherwise, we can skip forward a step.
-                if self.keypad.contains(&true) {
+                if !self.keypad.is_empty() {
                     self.pcounter += 2;
                 } else {
                     self.pcounter -= 2;

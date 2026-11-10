@@ -1,3 +1,4 @@
+use bitvec::prelude::*;
 use minifb::{Key, Window};
 use std::{
     sync::{
@@ -39,9 +40,10 @@ pub const CHIP8_KEYS: [Key; 16] = [
     Key::V,    // F (15)
 ];
 
+// TODO: Replace display with BitArr
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
-pub type KeypadArray = [bool; 16];
+pub type Keypad = BitArr!(for 16);
 
 pub fn tick_timers() {
     if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
@@ -57,11 +59,11 @@ pub fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display
     *lock = *display;
 }
 
-pub fn poll_input(w: &Window) -> KeypadArray {
-    let mut keypad = [false; 16];
+pub fn poll_input(w: &Window) -> Keypad {
+    let mut keypad: Keypad = BitArray::ZERO;
 
     for (index, &key) in CHIP8_KEYS.iter().enumerate() {
-        keypad[index] = w.is_key_down(key);
+        keypad.set(index, w.is_key_down(key));
     }
 
     return keypad;
