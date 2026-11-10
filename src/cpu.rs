@@ -15,14 +15,14 @@ use chirp::*;
 
 #[derive(Debug)]
 pub struct Chip8 {
-    pub memory: [u8; 4096],    // 4KB of RAM (u8 is one byte)
-    pub registers: [u8; 16],   // Chip-8 has 16 registers, V0 - V9, and VA - VF
-    pub index_reg: u16,        // 16-bit register to hold memory addresses
-    pub pcounter: u16,         // Program counter
-    pub stack: Vec<u16>,       // Call stack - list of memory addresses to keep track of subroutines
+    memory: [u8; 4096],        // 4KB of RAM (u8 is one byte)
+    registers: [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
+    index_reg: u16,            // 16-bit register to hold memory addresses
+    pcounter: u16,             // Program counter
+    stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
     pub keypad: KeypadArray,   // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
-    pub og_behaviour: bool,    // Toggle to emulate quirks of original hardware
+    og_behaviour: bool,        // Toggle to emulate quirks of original hardware
 }
 
 #[derive(Debug)]
@@ -61,7 +61,7 @@ impl Chip8 {
             registers: [0; 16],                   // Clear registers
             index_reg: 0,                         // Clear index register
             pcounter: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
-            stack: Vec::with_capacity(16), // Call stack can hold up to 16 addresses
+            stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: [false; 16],     // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             og_behaviour: og,        // Set based on user choice
@@ -158,7 +158,7 @@ impl Chip8 {
             Chip8Instruction::_00EE => {
                 // 00EE: Set program counter to the last address on the stack,
                 // then pop said address
-                self.pcounter = self.stack.pop().expect("Failed to return from subroutine");
+                self.pcounter = self.stack.pop(); //.expect("Failed to return from subroutine");
             }
             Chip8Instruction::_1NNN => {
                 // 1NNN: Jump to nnn
@@ -492,5 +492,32 @@ impl Chip8 {
                 }
             }
         }
+    }
+}
+
+#[derive(Debug)]
+struct ChipStack {
+    stack: [u16; 16],
+    sp: usize,
+}
+
+// TODO: Stack overflow / underflow errors
+impl ChipStack {
+    fn new() -> Self {
+        ChipStack {
+            stack: [0; 16],
+            sp: 0,
+        }
+    }
+
+    fn push(&mut self, val: u16) {
+        self.sp += 1;
+        self.stack[self.sp] = val;
+    }
+
+    fn pop(&mut self) -> u16 {
+        let val = self.stack[self.sp];
+        self.sp -= 1;
+        return val;
     }
 }
