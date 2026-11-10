@@ -8,13 +8,6 @@ mod execute;
 
 use chirp::*;
 
-// Resources:
-//   - https://austinmorlan.com/posts/chip8_emulator/
-//   - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
-//   - http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Annn
-//   - https://wiki.xxiivv.com/site/chip8.html
-//   - https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
-
 fn main() {
     let args = cli_args::parse_cli_args();
     dbg!(&args);
