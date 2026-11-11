@@ -10,15 +10,15 @@ use execute::*;
 
 #[derive(Debug)]
 pub struct Chip8 {
-    memory: [u8; 4096],        // 4KB of RAM (u8 is one byte)
-    registers: [u8; 16],       // Chip-8 has 16 registers, V0 - V9, and VA - VF
-    index_reg: u16,            // 16-bit register to hold memory addresses
-    pcounter: u16,             // Program counter
-    stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
-    pub keypad: Keypad,        // 16 keys, either pressed or not pressed
+    memory: [u8; 4096],           // 4KB of RAM (u8 is one byte)
+    registers: [u8; 16],          // Chip-8 has 16 registers, V0 - V9, and VA - VF
+    index_reg: u16,               // 16-bit register to hold memory addresses
+    pcounter: u16,                // Program counter
+    stack: ChipStack, // Call stack - list of memory addresses to keep track of subroutines
+    pub keypad: Keypad, // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
     pub framebuffer: Framebuffer, // U32 vector framebuffer for minifb
-    sys_type: SystemType,      // Chip-8 variant
+    sys_type: SystemType, // Chip-8 variant
 }
 
 #[derive(Debug)]
@@ -53,9 +53,9 @@ fn decode_opcode(opcode: u16) -> DecodedOpcode {
 impl Chip8 {
     pub fn new(st: &SystemType) -> Self {
         let mut new_cpu = Self {
-            memory: [0; 4096],                    // Clear memory
-            registers: [0; 16],                   // Clear registers
-            index_reg: 0,                         // Clear index register
+            memory: [0; 4096],                         // Clear memory
+            registers: [0; 16],                        // Clear registers
+            index_reg: 0,                              // Clear index register
             pcounter: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: BitArray::ZERO,  // Set all keys to unpressed
@@ -349,10 +349,14 @@ impl Chip8 {
             Chip8Instruction::_DXYN => {
                 // DXYN: Draw to screen and check collisions.
                 // Apply modulo to wrap sprites around edges if needed.
-                let start_x = self.registers[decoded.x] % 64;
-                let start_y = self.registers[decoded.y] % 32;
+                let start_x: u8;
+                let start_y: u8;
                 let height = decoded.n;
                 let mut collision = false;
+
+                // TODO: Clip on original hardware
+                start_x = self.registers[decoded.x] % 64;
+                start_y = self.registers[decoded.y] % 32;
 
                 // Vertical loop
                 for i in 0..height {
@@ -363,7 +367,7 @@ impl Chip8 {
                     for j in 0..8 {
                         let column = (start_x + j) % 64;
 
-                        let isolated_bit = sprite_byte >> (7 - j) & 1;
+                        let isolated_bit = (sprite_byte >> (7 - j)) & 1;
                         let display_index: usize = row_coord as usize * 64 + column as usize;
 
                         if (isolated_bit) == 1 {
