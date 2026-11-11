@@ -107,8 +107,9 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, ValueEnum)]
+#[derive(Debug, Clone, PartialEq, ValueEnum, Default)]
 pub enum SystemType {
+    #[default]
     Chip,
     SuperChip,
     XoChip,
@@ -118,7 +119,7 @@ pub enum SystemType {
 pub struct Args {
     /// Variant to emulate
     #[arg(short, long)]
-    pub sys_type: SystemType,
+    pub sys_type: Option<SystemType>,
 
     /// Display current framerate
     #[arg(short = 'f', long)]

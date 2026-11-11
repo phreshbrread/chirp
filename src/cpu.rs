@@ -62,6 +62,7 @@ impl Chip8 {
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: BitArray::ZERO,  // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
+            framebuffer: vec![0; SCREEN_W * SCREEN_H], // Turn all pixels off
             sys_type: SystemType::Chip, // Set based on user choice
         };
 
