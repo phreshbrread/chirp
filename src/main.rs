@@ -1,7 +1,11 @@
 use clap::Parser;
 use minifb::{Key, Window, WindowOptions};
 use rodio::source::{SineWave, Source};
-use std::{sync::atomic::Ordering, thread, time::{Duration, Instant}};
+use std::{
+    sync::atomic::Ordering,
+    thread,
+    time::{Duration, Instant},
+};
 
 mod cpu;
 mod execute;
@@ -87,10 +91,7 @@ fn main() {
 
         // Convert the Chip-8 true/false array into 32-bit hex values for minifb.
         // TODO: Replace inefficient conversion with a better method
-        for (i, e) in buffer.iter_mut().enumerate() {
-            // White if true, black if false
-            *e = if chip8.display[i] { 0xFFFFFF } else { 0x000000 };
-        }
+        let buffer = convert_framebuffer(&chip8.display);
 
         if args.show_fps {
             // TODO: Show FPS

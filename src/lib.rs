@@ -59,6 +59,17 @@ pub fn tick_timers() {
     }
 }
 
+pub fn convert_framebuffer(chip_display: &DisplayArray) -> Vec<u32> {
+    let mut buffer: Vec<u32> = vec![0; SCREEN_W * SCREEN_H];
+
+    for (i, e) in buffer.iter_mut().enumerate() {
+        // White if true, black if false
+        *e = if chip_display[i] { 0xFFFFFF } else { 0x000000 };
+    }
+
+    return buffer;
+}
+
 pub fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display: &DisplayArray) {
     let mut lock = cycle_framebuffer.write().unwrap();
     *lock = *display;
