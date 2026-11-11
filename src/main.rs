@@ -1,3 +1,7 @@
+mod cpu;
+mod execute;
+
+use chirp::*;
 use clap::Parser;
 use minifb::{Key, Window, WindowOptions};
 use rodio::source::{SineWave, Source};
@@ -6,11 +10,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-
-mod cpu;
-mod execute;
-
-use chirp::*;
 
 fn main() {
     let args = Args::parse();

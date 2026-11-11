@@ -1,15 +1,9 @@
-mod cpu;
-mod execute;
-
 use bitvec::prelude::*;
 use clap::{Parser, ValueEnum};
 use minifb::{Key, Window};
 use std::{
     path::PathBuf,
-    sync::{
-        Arc, RwLock,
-        atomic::{AtomicU8, Ordering},
-    },
+    sync::atomic::{AtomicU8, Ordering},
     thread,
     time::{Duration, Instant},
 };

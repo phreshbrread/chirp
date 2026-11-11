@@ -5,8 +5,7 @@
 // Groups using nn: 0x0, E, and F
 // -----------------------------------------------------------------
 
-use crate::SystemType;
-use crate::cpu::DecodedOpcode;
+use crate::{cpu::*, *};
 
 pub enum Chip8Instruction {
     _00E0,

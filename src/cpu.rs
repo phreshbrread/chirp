@@ -3,10 +3,8 @@
 // - Fix display wait
 use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
-use crate::*;
+use crate::{execute::*, *};
 use bitvec::prelude::*;
-use clap::ValueEnum;
-use execute::*;
 
 #[derive(Debug)]
 pub struct Chip8 {
@@ -59,7 +57,7 @@ impl Chip8 {
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: BitArray::ZERO,  // Set all keys to unpressed
             framebuffer: vec![0; SCREEN_W * SCREEN_H], // Turn all pixels off
-            sys_type: SystemType::Chip, // Set based on user choice
+            sys_type: st.clone(),    // Set based on user choice
         };
 
         new_cpu.load_font();
@@ -421,13 +419,11 @@ impl Chip8 {
             Chip8Instruction::_FX15 => {
                 // FX15: Set delay timer equal to VX
 
-                //timer.write_dt(self.registers[decoded.x]);
                 DELAY_TIMER.store(self.registers[decoded.x], Ordering::Relaxed);
             }
 
             Chip8Instruction::_FX18 => {
                 // FX18: Set sound timer equal to VX
-                //timer.write_st(self.registers[decoded.x]);
                 SOUND_TIMER.store(self.registers[decoded.x], Ordering::Relaxed);
             }
 
