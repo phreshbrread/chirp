@@ -1,15 +1,15 @@
+use clap::Parser;
 use minifb::{Key, Window, WindowOptions};
 use rodio::source::{SineWave, Source};
 use std::{sync::atomic::Ordering, thread, time::Duration};
 
-mod cli_args;
 mod cpu;
 mod execute;
 
 use chirp::*;
 
 fn main() {
-    let args = cli_args::parse_cli_args();
+    let args = Args::parse();
     dbg!(&args);
 
     // Initialize chip system & framebuffer
