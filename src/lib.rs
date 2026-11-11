@@ -50,6 +50,8 @@ pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type Keypad = BitArr!(for 16);
 pub type Framebuffer = Vec<u32>;
+pub const PIXEL_BLACK: u32 = 0x000000;
+pub const PIXEL_WHITE: u32 = 0xFFFFFF;
 
 pub fn tick_timers() {
     if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
@@ -58,22 +60,6 @@ pub fn tick_timers() {
     if SOUND_TIMER.load(Ordering::Relaxed) > 0 {
         SOUND_TIMER.fetch_sub(1, Ordering::Relaxed);
     }
-}
-
-pub fn convert_framebuffer(chip_display: &DisplayArray) -> Framebuffer {
-    let mut buffer: Framebuffer = vec![0; SCREEN_W * SCREEN_H];
-
-    for (i, e) in buffer.iter_mut().enumerate() {
-        // White if true, black if false
-        *e = if chip_display[i] { 0xFFFFFF } else { 0x000000 };
-    }
-
-    return buffer;
-}
-
-pub fn update_framebuffer(cycle_framebuffer: &Arc<RwLock<DisplayArray>>, display: &DisplayArray) {
-    let mut lock = cycle_framebuffer.write().unwrap();
-    *lock = *display;
 }
 
 pub fn poll_input(w: &Window) -> Keypad {

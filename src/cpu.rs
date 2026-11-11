@@ -1,8 +1,6 @@
 // TODO:
 // - Enable display clipping
 // - Fix display wait
-// TODO: (Performance-related)
-// - Only call update_framebuffer() at 60hz instead of 500hz
 use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
 use crate::*;
@@ -19,7 +17,7 @@ pub struct Chip8 {
     stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
     pub keypad: Keypad,        // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
-    pub framebuffer: Framebuffer,
+    pub framebuffer: Framebuffer, // U32 vector framebuffer for minifb
     sys_type: SystemType,      // Chip-8 variant
 }
 
@@ -156,6 +154,7 @@ impl Chip8 {
             Chip8Instruction::_00E0 => {
                 // 00E0: Clear the screen
                 self.display.fill(false);
+                self.framebuffer.fill(0);
             }
             Chip8Instruction::_00EE => {
                 // 00EE: Set program counter to the last address on the stack,
@@ -371,8 +370,10 @@ impl Chip8 {
                             if self.display[display_index] == true {
                                 collision = true;
                                 self.display[display_index] = false;
+                                self.framebuffer[display_index] = PIXEL_BLACK;
                             } else {
                                 self.display[display_index] = true;
+                                self.framebuffer[display_index] = PIXEL_WHITE;
                             }
                         }
                     }

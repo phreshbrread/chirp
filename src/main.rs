@@ -60,9 +60,6 @@ fn main() {
     let beep = rodio::Player::connect_new(&audio_handle.mixer());
     beep.append(SineWave::new(440.0).amplify(0.50));
 
-    // Minifb expects a framebuffer of 32-bit unsigned integers.
-    let mut buffer: Framebuffer = vec![0; SCREEN_W * SCREEN_H];
-
     // Main window loop
     while window.is_open() {
         let frame_start = Instant::now();
@@ -89,17 +86,13 @@ fn main() {
             beep.pause();
         }
 
-        // Convert the Chip-8 true/false array into 32-bit hex values for minifb.
-        // TODO: Replace inefficient conversion with a better method
-        let buffer = convert_framebuffer(&chip8.display);
-
         if args.show_fps {
             // TODO: Show FPS
         }
 
         // Update window
         window
-            .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
+            .update_with_buffer(&chip8.framebuffer, SCREEN_W, SCREEN_H)
             .unwrap();
 
         let frame_end = Instant::now();
