@@ -45,13 +45,11 @@ pub const CHIP8_KEYS: [Key; 16] = [
     Key::V,    // F (15)
 ];
 
-// TODO: Replace display with BitArr
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
-pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
-pub type Keypad = BitArr!(for 16);
-pub type Framebuffer = Vec<u32>;
 pub const PIXEL_BLACK: u32 = 0x000000;
 pub const PIXEL_WHITE: u32 = 0xFFFFFF;
+pub type Keypad = BitArr!(for 16);
+pub type Framebuffer = Vec<u32>;
 
 pub fn tick_timers() {
     if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
