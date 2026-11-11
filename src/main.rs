@@ -1,7 +1,7 @@
 use clap::Parser;
 use minifb::{Key, Window, WindowOptions};
 use rodio::source::{SineWave, Source};
-use std::{sync::atomic::Ordering, thread, time::Duration};
+use std::{sync::atomic::Ordering, thread, time::{Duration, Instant}};
 
 mod cpu;
 mod execute;
@@ -61,6 +61,8 @@ fn main() {
 
     // Main window loop
     while window.is_open() {
+        let frame_start = Instant::now();
+
         if args.esc_quits && window.is_key_down(Key::Escape) {
             std::process::exit(0);
         }
@@ -98,5 +100,10 @@ fn main() {
         window
             .update_with_buffer(&buffer, SCREEN_W, SCREEN_H)
             .unwrap();
+
+        let frame_end = Instant::now();
+
+        let _frametime = frame_end - frame_start;
+        //println!("Frametime: {:#?}", frametime);
     }
 }
