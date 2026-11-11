@@ -1,5 +1,8 @@
+mod cpu;
+mod execute;
+
 use bitvec::prelude::*;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use minifb::{Key, Window};
 use std::{
     path::PathBuf,
@@ -92,13 +95,18 @@ where
     }
 }
 
+#[derive(Debug, Clone, PartialEq, ValueEnum)]
+pub enum SystemType {
+    Chip,
+    SuperChip,
+    XoChip,
+}
+
 #[derive(Parser, Debug)]
 pub struct Args {
-    //#[arg(short, long)]
-    //system: Option<String>,
-    /// Emulate original hardware behaviour
+    /// Variant to emulate
     #[arg(short, long)]
-    pub original_behaviour: bool,
+    pub sys_type: SystemType,
 
     /// Display current framerate
     #[arg(short = 'f', long)]

@@ -13,7 +13,7 @@ fn main() {
     dbg!(&args);
 
     // Initialize chip system & framebuffer
-    let mut chip8 = cpu::Chip8::new(args.original_behaviour);
+    let mut chip8 = cpu::Chip8::new(&args.sys_type);
 
     // Attempt to load ROM
     chip8.load_rom(&args.rom_path);

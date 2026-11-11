@@ -3,12 +3,12 @@
 // - Fix display wait
 // TODO: (Performance-related)
 // - Only call update_framebuffer() at 60hz instead of 500hz
-
 use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
-use crate::execute::*;
+use crate::*;
 use bitvec::prelude::*;
-use chirp::*;
+use clap::ValueEnum;
+use execute::*;
 
 #[derive(Debug)]
 pub struct Chip8 {
@@ -19,7 +19,6 @@ pub struct Chip8 {
     stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
     pub keypad: Keypad,        // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
-    og_behaviour: bool,        // Toggle to emulate quirks of original hardware
     sys_type: SystemType,      // Chip-8 variant
 }
 
@@ -53,7 +52,7 @@ fn decode_opcode(opcode: u16) -> DecodedOpcode {
 }
 
 impl Chip8 {
-    pub fn new(og: bool) -> Self {
+    pub fn new(st: &SystemType) -> Self {
         let mut new_cpu = Self {
             memory: [0; 4096],                    // Clear memory
             registers: [0; 16],                   // Clear registers
@@ -62,8 +61,7 @@ impl Chip8 {
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: BitArray::ZERO,  // Set all keys to unpressed
             display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
-            og_behaviour: og,        // Set based on user choice
-            sys_type: SystemType::Chip8, // Set based on user choice
+            sys_type: SystemType::Chip, // Set based on user choice
         };
 
         new_cpu.load_font();
@@ -146,7 +144,7 @@ impl Chip8 {
         let decoded = decode_opcode(opcode);
 
         // Get next instruction from decoded opcode
-        let Ok(instruction) = get_instruction(&decoded, self.og_behaviour) else {
+        let Ok(instruction) = get_instruction(&decoded, &self.sys_type) else {
             println!("\nFatal error: unknown instruction");
             dbg!(decoded);
             process::exit(1);
@@ -211,7 +209,7 @@ impl Chip8 {
 
                 // Reset VF to preserve original hardware quirk.
                 // This also occurs in 8XY2 and 8XY3.
-                if self.og_behaviour {
+                if self.sys_type == SystemType::Chip {
                     self.registers[15] = 0;
                 }
             }
@@ -219,7 +217,7 @@ impl Chip8 {
                 // 8XY2: Set VX to bitwise AND of VX and VY
                 self.registers[decoded.x] = self.registers[decoded.x] & self.registers[decoded.y];
 
-                if self.og_behaviour {
+                if self.sys_type == SystemType::Chip {
                     self.registers[15] = 0;
                 }
             }
@@ -227,7 +225,7 @@ impl Chip8 {
                 // 8XY3: Set VX to bitwise XOR of VX and VY
                 self.registers[decoded.x] = self.registers[decoded.x] ^ self.registers[decoded.y];
 
-                if self.og_behaviour {
+                if self.sys_type == SystemType::Chip {
                     self.registers[15] = 0;
                 }
             }
@@ -275,7 +273,7 @@ impl Chip8 {
                 // to 1 (otherwise 0), then divide VX by 2.
 
                 // Original hardware would put the value of VY into VX first
-                if self.og_behaviour {
+                if self.sys_type == SystemType::Chip {
                     self.registers[decoded.x] = self.registers[decoded.y];
                 }
 
@@ -302,8 +300,9 @@ impl Chip8 {
                 // If the most-significant bit of VX is 1, then VF is set to 1,
                 // otherwise to 0. Then VX is multiplied by 2.
 
-                if self.og_behaviour {
-                    self.registers[decoded.x] = self.registers[decoded.y];
+                match self.sys_type {
+                    SystemType::Chip => self.registers[decoded.x] = self.registers[decoded.y],
+                    _ => todo!(),
                 }
 
                 let tmp_vx = self.registers[decoded.x];
@@ -475,8 +474,9 @@ impl Chip8 {
 
                 // Early hardware had a quirk where index_reg would be
                 // incremented by (x + 1) at the end of the copy operation
-                if self.og_behaviour {
-                    self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
+
+                if self.sys_type == SystemType::Chip {
+                    self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1)
                 }
             }
 
@@ -489,8 +489,11 @@ impl Chip8 {
 
                 self.registers[..decoded.x + 1].copy_from_slice(&self.memory[s..s + count]);
 
-                if self.og_behaviour {
-                    self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1);
+                match self.sys_type {
+                    SystemType::Chip => {
+                        self.index_reg = self.index_reg.wrapping_add((decoded.x as u16) + 1)
+                    }
+                    _ => todo!(),
                 }
             }
         }
@@ -522,12 +525,4 @@ impl ChipStack {
         self.sp -= 1;
         return val;
     }
-}
-
-// TODO: Use this
-#[derive(Debug)]
-pub enum SystemType {
-    Chip8,
-    SuperChip,
-    XoChip,
 }

@@ -5,6 +5,7 @@
 // Groups using nn: 0x0, E, and F
 // -----------------------------------------------------------------
 
+use crate::SystemType;
 use crate::cpu::DecodedOpcode;
 
 pub enum Chip8Instruction {
@@ -45,10 +46,7 @@ pub enum Chip8Instruction {
     _FX65,
 }
 
-pub fn get_instruction(
-    decoded: &DecodedOpcode,
-    og_behaviour: bool,
-) -> Result<Chip8Instruction, ()> {
+pub fn get_instruction(decoded: &DecodedOpcode, st: &SystemType) -> Result<Chip8Instruction, ()> {
     match decoded.n1 {
         0x0 => match decoded.nn {
             0xE0 => return Ok(Chip8Instruction::_00E0),
@@ -77,12 +75,10 @@ pub fn get_instruction(
         },
         0x9 => return Ok(Chip8Instruction::_9XY0),
         0xA => return Ok(Chip8Instruction::_ANNN),
-        0xB => {
-            if og_behaviour {
-                return Ok(Chip8Instruction::_BNNN);
-            }
-            return Ok(Chip8Instruction::_BXNN);
-        }
+        0xB => match st {
+            SystemType::Chip => return Ok(Chip8Instruction::_BNNN),
+            _ => return Ok(Chip8Instruction::_BXNN),
+        },
         0xC => return Ok(Chip8Instruction::_CXNN),
         0xD => return Ok(Chip8Instruction::_DXYN),
         0xE => {
