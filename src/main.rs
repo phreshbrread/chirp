@@ -61,7 +61,7 @@ fn main() {
     beep.append(SineWave::new(440.0).amplify(0.50));
 
     // Minifb expects a framebuffer of 32-bit unsigned integers.
-    let mut buffer: Vec<u32> = vec![0; SCREEN_W * SCREEN_H];
+    let mut buffer: Framebuffer = vec![0; SCREEN_W * SCREEN_H];
 
     // Main window loop
     while window.is_open() {

@@ -49,6 +49,7 @@ pub const CHIP8_KEYS: [Key; 16] = [
 pub const CHIP8_DISPLAY_SIZE: usize = 64 * 32;
 pub type DisplayArray = [bool; CHIP8_DISPLAY_SIZE];
 pub type Keypad = BitArr!(for 16);
+pub type Framebuffer = Vec<u32>;
 
 pub fn tick_timers() {
     if DELAY_TIMER.load(Ordering::Relaxed) > 0 {
@@ -59,8 +60,8 @@ pub fn tick_timers() {
     }
 }
 
-pub fn convert_framebuffer(chip_display: &DisplayArray) -> Vec<u32> {
-    let mut buffer: Vec<u32> = vec![0; SCREEN_W * SCREEN_H];
+pub fn convert_framebuffer(chip_display: &DisplayArray) -> Framebuffer {
+    let mut buffer: Framebuffer = vec![0; SCREEN_W * SCREEN_H];
 
     for (i, e) in buffer.iter_mut().enumerate() {
         // White if true, black if false

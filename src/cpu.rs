@@ -19,6 +19,7 @@ pub struct Chip8 {
     stack: ChipStack,          // Call stack - list of memory addresses to keep track of subroutines
     pub keypad: Keypad,        // 16 keys, either pressed or not pressed
     pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
+    pub framebuffer: Framebuffer,
     sys_type: SystemType,      // Chip-8 variant
 }
 
