@@ -16,8 +16,7 @@ pub struct Chip8 {
     pcounter: u16,                // Program counter
     stack: ChipStack, // Call stack - list of memory addresses to keep track of subroutines
     pub keypad: Keypad, // 16 keys, either pressed or not pressed
-    pub display: DisplayArray, // 64 x 32 monochrome display, each pixel either on or off
-    pub framebuffer: Framebuffer, // U32 vector framebuffer for minifb
+    pub framebuffer: Framebuffer, // Vec<u32> framebuffer for minifb
     sys_type: SystemType, // Chip-8 variant
 }
 
@@ -59,7 +58,6 @@ impl Chip8 {
             pcounter: START_ADDRESS, // Games start at 0x200 as the first 512 bytes are reserved for the system
             stack: ChipStack::new(), // Call stack can hold up to 16 addresses
             keypad: BitArray::ZERO,  // Set all keys to unpressed
-            display: [false; CHIP8_DISPLAY_SIZE], // Turn all pixels off
             framebuffer: vec![0; SCREEN_W * SCREEN_H], // Turn all pixels off
             sys_type: SystemType::Chip, // Set based on user choice
         };
@@ -153,7 +151,6 @@ impl Chip8 {
         match instruction {
             Chip8Instruction::_00E0 => {
                 // 00E0: Clear the screen
-                self.display.fill(false);
                 self.framebuffer.fill(0);
             }
             Chip8Instruction::_00EE => {
@@ -371,12 +368,10 @@ impl Chip8 {
                         let display_index: usize = row_coord as usize * 64 + column as usize;
 
                         if (isolated_bit) == 1 {
-                            if self.display[display_index] == true {
+                            if self.framebuffer[display_index] == PIXEL_WHITE {
                                 collision = true;
-                                self.display[display_index] = false;
                                 self.framebuffer[display_index] = PIXEL_BLACK;
                             } else {
-                                self.display[display_index] = true;
                                 self.framebuffer[display_index] = PIXEL_WHITE;
                             }
                         }
