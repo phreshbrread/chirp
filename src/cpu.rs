@@ -409,7 +409,7 @@ impl Chip8 {
                 //
                 // If no key is detected, we simply rewind execution by one step so we keep
                 // hitting this check, otherwise, we can skip forward a step.
-                if !self.keypad.is_empty() {
+                if self.keypad.is_empty() {
                     self.pcounter += 2;
                 } else {
                     self.pcounter -= 2;
