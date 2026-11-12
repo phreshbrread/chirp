@@ -14,3 +14,6 @@ tetris: build
 
 keypad-test: build
 	./target/debug/chirp -e -f assets/test/6-keypad.ch8
+
+quirks-test: build
+	./target/debug/chirp -e -f assets/test/5-quirks.ch8
