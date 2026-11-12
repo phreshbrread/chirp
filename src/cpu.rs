@@ -343,27 +343,36 @@ impl Chip8 {
             // Display
             Chip8Instruction::_DXYN => {
                 // DXYN: Draw to screen and check collisions.
-                // Apply modulo to wrap sprites around edges if needed.
-                let start_x: u8;
-                let start_y: u8;
+                let start_x: i32;
+                let start_y: i32;
                 let height = decoded.n;
                 let mut collision = false;
 
-                // TODO: Clip on original hardware
-                start_x = self.registers[decoded.x] % 64;
-                start_y = self.registers[decoded.y] % 32;
+                // Get starting coordinates, wrapped around screen bounds
+                start_x = (self.registers[decoded.x] % SCREEN_W as u8) as i32;
+                start_y = (self.registers[decoded.y] % SCREEN_H as u8) as i32;
 
-                // Vertical loop
+                /* -- Vertical loop -- */
                 for i in 0..height {
                     let sprite_byte: u8 = self.memory[self.index_reg as usize + i as usize];
-                    let row_coord = (start_y + i) % 32;
+                    let row_y: i32 = start_y as i32 + i as i32;
 
-                    // Horizontal loop
+                    // Clip if pixel is offscreen
+                    if row_y >= SCREEN_H as i32 {
+                        break;
+                    }
+
+                    /* -- Horizontal loop -- */
                     for j in 0..8 {
-                        let column = (start_x + j) % 64;
+                        let column_x = start_x + j; // % SCREEN_W as u8;
+
+                        // Clip
+                        if column_x >= SCREEN_W as i32 {
+                            break;
+                        }
 
                         let isolated_bit = (sprite_byte >> (7 - j)) & 1;
-                        let display_index: usize = row_coord as usize * 64 + column as usize;
+                        let display_index: usize = row_y as usize * SCREEN_W + column_x as usize;
 
                         if (isolated_bit) == 1 {
                             if self.framebuffer[display_index] == PIXEL_WHITE {
@@ -376,11 +385,8 @@ impl Chip8 {
                     }
                 }
 
-                if collision {
-                    self.registers[15] = 1;
-                } else {
-                    self.registers[15] = 0;
-                }
+                // Set collision flag
+                self.registers[15] = collision as u8;
             }
             Chip8Instruction::_EX9A => {
                 let key: usize = self.registers[decoded.x] as usize;
