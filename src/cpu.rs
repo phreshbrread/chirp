@@ -140,7 +140,7 @@ impl Chip8 {
         let decoded = decode_opcode(opcode);
 
         // Get next instruction from decoded opcode
-        let Ok(instruction) = get_instruction(&decoded, &self.sys_type) else {
+        let Some(instruction) = get_instruction(&decoded, &self.sys_type) else {
             println!("\nFatal error: unknown instruction");
             dbg!(decoded);
             process::exit(1);
