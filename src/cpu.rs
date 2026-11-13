@@ -506,11 +506,10 @@ impl Chip8 {
 
 #[derive(Debug)]
 struct ChipStack {
-    stack: [u16; 16],
+    stack: [u16; STACK_SIZE],
     sp: usize,
 }
 
-// TODO: Stack overflow / underflow errors
 impl ChipStack {
     fn new() -> Self {
         ChipStack {

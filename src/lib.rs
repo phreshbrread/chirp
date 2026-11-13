@@ -11,11 +11,11 @@ use std::{
 pub static DELAY_TIMER: AtomicU8 = AtomicU8::new(0);
 pub static SOUND_TIMER: AtomicU8 = AtomicU8::new(0);
 
+/* -- System Constants -- */
 pub const START_ADDRESS: u16 = 0x200; // First 512 bytes reserved for system
+pub const STACK_SIZE: usize = 16;
 pub const FONTSET_SIZE: usize = 80; // Fonts only take up 80 bytes
-pub const MAX_ROM_SIZE: usize = 4096 - 512;
-
-// TODO: Allow for adjustment
+pub const MAX_ROM_SIZE: usize = (4096 - START_ADDRESS) as usize;
 pub const SCREEN_SCALE: usize = 20;
 pub const SCREEN_W: usize = 64;
 pub const SCREEN_H: usize = 32;
