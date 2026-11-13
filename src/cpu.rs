@@ -1,6 +1,3 @@
-// TODO:
-// - Enable display clipping
-// - Fix display wait
 use std::{fs, path::PathBuf, process, sync::atomic::Ordering};
 
 use crate::{execute::*, *};
@@ -341,6 +338,7 @@ impl Chip8 {
             }
 
             // Display
+            // TODO: Fix display wait
             Chip8Instruction::_DXYN => {
                 // DXYN: Draw to screen and check collisions.
                 let start_x: i32;
