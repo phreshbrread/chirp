@@ -341,14 +341,12 @@ impl Chip8 {
             // TODO: Fix display wait
             Chip8Instruction::_DXYN => {
                 // DXYN: Draw to screen and check collisions.
-                let start_x: i32;
-                let start_y: i32;
                 let height = decoded.n;
                 let mut collision = false;
 
                 // Get starting coordinates, wrapped around screen bounds
-                start_x = (self.registers[decoded.x] % SCREEN_W as u8) as i32;
-                start_y = (self.registers[decoded.y] % SCREEN_H as u8) as i32;
+                let start_x: i32 = (self.registers[decoded.x] % SCREEN_W as u8) as i32;
+                let start_y: i32 = (self.registers[decoded.y] % SCREEN_H as u8) as i32;
 
                 /* -- Vertical loop -- */
                 for i in 0..height {
